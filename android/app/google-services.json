@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "297033738058",
+    "project_id": "pdify-492b7",
+    "storage_bucket": "pdify-492b7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:297033738058:android:3063e99bcbb328064dc3b3",
+        "android_client_info": {
+          "package_name": "com.example.pdify"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDOb7mfqawPpAi4-5ieFHY9dclPj87iDgg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
