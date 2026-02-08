@@ -1,0 +1,45 @@
+Privacy Policy for PDify
+
+Effective Date: 2024-02-08
+
+1. Introduction
+Welcome to PDify ("we," "our," or "us"). PDify is an AI-powered PDF summarizer application. This Privacy Policy explains how we collect, use, disclosure, and safeguard your information when you use our mobile application (the "App").
+
+2. Data Collection
+We collect the following types of information:
+
+A. Personal Information
+- Authentication Data: When you sign in using Google Sign-In or Email, we collect your email address and basic profile information via Firebase Authentication to manage your account.
+
+B. User Content
+- Uploaded Files: The PDF files you upload are stored securely in Google Firebase Storage for the purpose of processing and summarization.
+- Generated Content: AI-generated summaries are stored in Google Firebase Firestore linked to your account.
+
+C. Usage Data & Analytics
+- We use Google Analytics for Firebase to understand how users interact with our App.
+- We use Google AdMob to display advertisements. AdMob may collect data (such as device identifiers) to show personalized ads.
+
+3. How We Use Your Information
+- To provide the Service: Processing your PDFs and generating summaries.
+- To manage your Account: Authentication and profile management.
+- To improve the App: Analyzing usage trends to fix bugs and enhance features.
+- To display Ads: Showing relevant advertisements via Google AdMob.
+
+4. Third-Party Services
+We use the following third-party services which may collect information in accordance with their own privacy policies:
+- Google AdMob: https://policies.google.com/privacy
+- Google Firebase (Auth, Firestore, Storage, Analytics): https://firebase.google.com/support/privacy
+
+5. Data Retention and Deletion
+- We retain your data as long as your account is active.
+- You have the right to delete your account and all associated data at any time directly within the App (Profile -> Delete Account). This action permanently removes your personal information and uploaded files from our systems.
+
+6. Security
+We use administrative, technical, and physical security measures to help protect your personal information. Your data is stored on secure Google Cloud servers (Firebase).
+
+7. Children's Privacy
+We do not knowingly solicit information from or market to children under the age of 13.
+
+8. Contact Us
+If you have questions about this Privacy Policy, please contact us at:
+[Your Support Email Here]

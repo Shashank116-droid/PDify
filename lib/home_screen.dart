@@ -6,8 +6,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:pdify/ad_service.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:in_app_update/in_app_update.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +21,29 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final User? user = FirebaseAuth.instance.currentUser;
   bool _isUploading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkForUpdate();
+  }
+
+  Future<void> _checkForUpdate() async {
+    try {
+      final info = await InAppUpdate.checkForUpdate();
+      if (info.updateAvailability == UpdateAvailability.updateAvailable) {
+        if (info.immediateUpdateAllowed) {
+          await InAppUpdate.performImmediateUpdate();
+        } else if (info.flexibleUpdateAllowed) {
+          await InAppUpdate.startFlexibleUpdate();
+          await InAppUpdate.completeFlexibleUpdate();
+        }
+      }
+    } catch (e) {
+      // Update check failed (expected in debug/local builds)
+      debugPrint("Update check failed: $e");
+    }
+  }
 
   Future<void> _uploadPdf() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -701,49 +726,33 @@ class SummaryView extends StatelessWidget {
   }
 
   Widget _buildFormattedText(String text, ThemeData theme) {
-    final List<InlineSpan> spans = [];
-    final RegExp boldPattern = RegExp(r'\*\*(.+?)\*\*');
-
-    int lastEnd = 0;
-    for (final match in boldPattern.allMatches(text)) {
-      if (match.start > lastEnd) {
-        spans.add(
-          TextSpan(
-            text: text.substring(lastEnd, match.start),
-            style: const TextStyle(
-              height: 1.6,
-              color: Color(0xFF374151), // Gray 700
-              fontSize: 15,
-            ),
-          ),
-        );
-      }
-      spans.add(
-        TextSpan(
-          text: match.group(1),
-          style: const TextStyle(
-            height: 1.6,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF111827), // Gray 900
-            fontSize: 15,
-          ),
+    return MarkdownBody(
+      data: text,
+      selectable: true,
+      styleSheet: MarkdownStyleSheet(
+        p: const TextStyle(fontSize: 15, color: Color(0xFF374151), height: 1.6),
+        strong: const TextStyle(
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF111827),
         ),
-      );
-      lastEnd = match.end;
-    }
-    if (lastEnd < text.length) {
-      spans.add(
-        TextSpan(
-          text: text.substring(lastEnd),
-          style: const TextStyle(
-            height: 1.6,
-            color: Color(0xFF374151), // Gray 700
-            fontSize: 15,
-          ),
+        h1: const TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w800,
+          color: Color(0xFF7C3AED),
         ),
-      );
-    }
-    return RichText(text: TextSpan(children: spans));
+        h2: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF7C3AED),
+        ),
+        h3: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF7C3AED),
+        ),
+        listBullet: const TextStyle(color: Color(0xFF7C3AED)),
+      ),
+    );
   }
 }
 

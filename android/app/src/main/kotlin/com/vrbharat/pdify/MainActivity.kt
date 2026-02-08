@@ -1,4 +1,4 @@
-package com.example.pdify
+package com.vrbharat.pdify
 
 import io.flutter.embedding.android.FlutterActivity
 

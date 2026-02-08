@@ -7,12 +7,25 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:297033738058:android:3063e99bcbb328064dc3b3",
+        "mobilesdk_app_id": "1:297033738058:android:9cd150d986e464304dc3b3",
         "android_client_info": {
-          "package_name": "com.example.pdify"
+          "package_name": "com.vrbharat.pdify"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "297033738058-8gupucets4j1gvef56ca1uvgs521fee4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.vrbharat.pdify",
+            "certificate_hash": "a00b23e0ef3e1f44fbcc8cf5743af2c2bda7df9a"
+          }
+        },
+        {
+          "client_id": "297033738058-ov3l64j1ms0jak233i66qdml8tbqbcg1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDOb7mfqawPpAi4-5ieFHY9dclPj87iDgg"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "297033738058-ov3l64j1ms0jak233i66qdml8tbqbcg1.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "297033738058-kvtd94sj3uopfu0flv3cctq4lnkulh5b.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.pdify"
+              }
+            }
+          ]
         }
       }
     }

@@ -7,6 +7,7 @@ import 'package:pdify/convert_screen.dart';
 import 'package:pdify/home_screen.dart';
 import 'package:pdify/login_screen.dart';
 import 'package:pdify/profile_screen.dart';
+import 'package:pdify/splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -82,7 +83,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const AuthWrapper(),
+      home: const SplashScreen(),
     );
   }
 }
