@@ -6,6 +6,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:pdify/ad_service.dart';
+import 'package:share_plus/share_plus.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -88,7 +90,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    // Gradient Mesh Background Colors
+    const color1 = Color(0xFF7C3AED); // Vivid Purple
+    const color2 = Color(0xFFFF6B6B); // Coral Red
+    const color3 = Color(0xFF00D9FF); // Cyan
+    const color4 = Color(0xFFFFD166); // Warm Yellow
+
     return Scaffold(
+      backgroundColor: Colors.white,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Row(
@@ -99,8 +108,9 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               "Pdify",
               style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w800, // Bolder
                 color: theme.colorScheme.primary,
+                letterSpacing: -0.5,
               ),
             ),
           ],
@@ -108,43 +118,34 @@ class _HomeScreenState extends State<HomeScreen> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        flexibleSpace: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              color: theme.colorScheme.surface.withValues(alpha: 0.5),
-            ),
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-            },
-          ),
-        ],
       ),
       body: Stack(
         children: [
-          // 1. Gradient Background
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFFE0F7FA),
-                  Color(0xFFE1BEE7),
-                  Color(0xFFF3E5F5),
-                  Color(0xFFFFF3E0),
-                ],
-                stops: [0.0, 0.4, 0.7, 1.0],
-              ),
+          // --- Gradient Mesh Background ---
+          Positioned(top: -100, left: -50, child: _buildMeshBlob(color1, 300)),
+          Positioned(top: 150, right: -80, child: _buildMeshBlob(color2, 350)),
+          Positioned(
+            bottom: -50,
+            left: -50,
+            child: _buildMeshBlob(color3, 300),
+          ),
+          Positioned(
+            bottom: 200,
+            right: -50,
+            child: _buildMeshBlob(color4, 250),
+          ),
+
+          // Blur to blend blobs into a mesh
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+              child: Container(
+                color: Colors.white.withValues(alpha: 0.3),
+              ), // SLight overlay
             ),
           ),
 
-          // 2. Content
+          // --- Content ---
           SafeArea(
             child: Column(
               children: [
@@ -160,6 +161,19 @@ class _HomeScreenState extends State<HomeScreen> {
                         .orderBy('uploadedAt', descending: true)
                         .snapshots(),
                     builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: SelectableText(
+                              "Error: ${snapshot.error}",
+                              style: TextStyle(color: theme.colorScheme.error),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                      }
+
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       }
@@ -172,25 +186,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Icons.description_outlined,
                                 size: 64,
                                 color: theme.colorScheme.primary.withValues(
-                                  alpha: 0.5,
+                                  alpha: 0.3,
                                 ),
                               ),
                               const SizedBox(height: 16),
                               Text(
                                 "No PDFs uploaded yet",
                                 style: theme.textTheme.titleMedium?.copyWith(
-                                  color: theme.colorScheme.onSurface.withValues(
-                                    alpha: 0.6,
-                                  ),
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 "Upload a PDF to get started",
                                 style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurface.withValues(
-                                    alpha: 0.5,
-                                  ),
+                                  color: Colors.black38,
                                 ),
                               ),
                             ],
@@ -200,7 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       var docs = snapshot.data!.docs;
                       return ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                         itemCount: docs.length,
                         itemBuilder: (context, index) {
                           var doc = docs[index];
@@ -216,70 +227,109 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      // Banner Ad at bottom
+      bottomNavigationBar: Container(
+        color: Colors.white,
+        child: SafeArea(child: const BannerAdWidget()),
+      ),
+    );
+  }
+
+  Widget _buildMeshBlob(Color color, double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [color.withValues(alpha: 0.6), color.withValues(alpha: 0.0)],
+        ),
+      ),
     );
   }
 
   Widget _buildUploadSection(ThemeData theme) {
-    return GlassContainer(
-      margin: const EdgeInsets.all(16),
+    return Container(
+      margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(
+              0xFF7C3AED,
+            ).withValues(alpha: 0.08), // Subtle purple shadow
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
+              color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              Icons.upload_file_rounded,
+            child: const Icon(
+              Icons.cloud_upload_rounded,
               size: 32,
-              color: theme.colorScheme.primary,
+              color: Color(0xFF7C3AED),
             ),
           ),
           const SizedBox(height: 16),
           Text(
             "Upload your notes",
             style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w800,
+              color: Colors.black87,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             "PDFs up to 10MB • AI-powered summaries",
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           _isUploading
               ? Column(
                   children: [
                     const SizedBox(height: 10),
-                    CircularProgressIndicator(color: theme.colorScheme.primary),
+                    const CircularProgressIndicator(color: Color(0xFF7C3AED)),
                     const SizedBox(height: 10),
-                    Text(
+                    const Text(
                       "Uploading...",
-                      style: TextStyle(color: theme.colorScheme.primary),
+                      style: TextStyle(
+                        color: Color(0xFF7C3AED),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 )
-              : FilledButton.icon(
-                  onPressed: _uploadPdf,
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text("Choose PDF"),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: theme.colorScheme.onPrimary,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
+              : SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _uploadPdf,
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text(
+                      "Choose PDF",
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF7C3AED),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      shadowColor: const Color(
+                        0xFF7C3AED,
+                      ).withValues(alpha: 0.4),
+                      elevation: 8,
                     ),
-                    elevation: 0,
                   ),
                 ),
         ],
@@ -295,23 +345,34 @@ class _HomeScreenState extends State<HomeScreen> {
     String status = data['status'] ?? 'unknown';
     String fileName = data['fileName'] ?? 'Unknown File';
 
-    return GlassContainer(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: EdgeInsets.zero,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Theme(
         data: theme.copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           title: Text(
             fileName,
             style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
+              color: Colors.black87,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           subtitle: Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 8),
             child: Align(
               alignment: Alignment.centerLeft,
               child: _buildStatusChip(status, theme),
@@ -320,25 +381,28 @@ class _HomeScreenState extends State<HomeScreen> {
           leading: _buildStatusIcon(status, theme),
           children: [
             if (status == 'completed')
-              SummaryView(pdfId: docId)
+              _RewardedSummaryGate(pdfId: docId)
             else if (status == 'processing')
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(24),
                 child: Row(
                   children: [
-                    SizedBox(
+                    const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: theme.colorScheme.primary,
+                        color: Color(0xFF7C3AED),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Text(
                         "Summarizing...",
-                        style: theme.textTheme.bodyMedium,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ],
@@ -346,15 +410,18 @@ class _HomeScreenState extends State<HomeScreen> {
               )
             else
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(24),
                 child: Row(
                   children: [
                     Icon(Icons.error_outline, color: theme.colorScheme.error),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Text(
                         "Failed.",
-                        style: TextStyle(color: theme.colorScheme.error),
+                        style: TextStyle(
+                          color: theme.colorScheme.error,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -370,40 +437,46 @@ class _HomeScreenState extends State<HomeScreen> {
     switch (status) {
       case 'completed':
         return Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Colors.green.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
+            color: const Color(
+              0xFF10B981,
+            ).withValues(alpha: 0.1), // Emerald Green
+            shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.check_circle, color: Colors.green, size: 24),
+          child: const Icon(
+            Icons.check_rounded,
+            color: Color(0xFF10B981),
+            size: 20,
+          ),
         );
       case 'processing':
         return Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
+            shape: BoxShape.circle,
           ),
-          child: SizedBox(
-            width: 24,
-            height: 24,
+          child: const SizedBox(
+            width: 20,
+            height: 20,
             child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              color: theme.colorScheme.primary,
+              strokeWidth: 2,
+              color: Color(0xFF7C3AED),
             ),
           ),
         );
       default:
         return Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: theme.colorScheme.error.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
+            color: const Color(0xFFEF4444).withValues(alpha: 0.1), // Red
+            shape: BoxShape.circle,
           ),
-          child: Icon(
-            Icons.error_outline,
-            color: theme.colorScheme.error,
-            size: 24,
+          child: const Icon(
+            Icons.priority_high_rounded,
+            color: Color(0xFFEF4444),
+            size: 20,
           ),
         );
     }
@@ -416,32 +489,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
     switch (status) {
       case 'completed':
-        bgColor = Colors.green.withValues(alpha: 0.1);
-        textColor = Colors.green.shade700;
+        bgColor = const Color(0xFF10B981).withValues(alpha: 0.1);
+        textColor = const Color(0xFF047857);
         label = 'Ready';
         break;
       case 'processing':
-        bgColor = theme.colorScheme.primary.withValues(alpha: 0.1);
-        textColor = theme.colorScheme.primary;
+        bgColor = const Color(0xFF7C3AED).withValues(alpha: 0.1);
+        textColor = const Color(0xFF7C3AED);
         label = 'Processing';
         break;
       default:
-        bgColor = theme.colorScheme.error.withValues(alpha: 0.1);
-        textColor = theme.colorScheme.error;
+        bgColor = const Color(0xFFEF4444).withValues(alpha: 0.1);
+        textColor = const Color(0xFFB91C1C);
         label = 'Error';
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20), // Pill shape
       ),
       child: Text(
         label,
-        style: theme.textTheme.bodySmall?.copyWith(
+        style: theme.textTheme.labelSmall?.copyWith(
           color: textColor,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
         ),
       ),
     );
@@ -464,47 +538,19 @@ class SummaryView extends StatelessWidget {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  "Loading summaries...",
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-              ],
+          return const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(
+              child: CircularProgressIndicator(color: Color(0xFF7C3AED)),
             ),
           );
         }
         if (snapshot.hasError) {
           return Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  color: theme.colorScheme.error,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  "Could not load summaries",
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
-                ),
-              ],
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              "Could not load summaries",
+              style: TextStyle(color: theme.colorScheme.error),
             ),
           );
         }
@@ -512,24 +558,12 @@ class SummaryView extends StatelessWidget {
         final docs = snapshot.data?.docs ?? [];
         if (docs.isEmpty) {
           return Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.hourglass_empty,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    "Summaries appearing soon...",
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ),
-              ],
+            padding: const EdgeInsets.all(24),
+            child: Center(
+              child: Text(
+                "Summaries appearing soon...",
+                style: TextStyle(color: Colors.black.withValues(alpha: 0.5)),
+              ),
             ),
           );
         }
@@ -560,19 +594,28 @@ class SummaryView extends StatelessWidget {
           ),
         ];
 
-        if (examSummary != null) {
-          tabs.add(const Tab(text: "Exam Mode"));
-          views.add(
-            _buildSummaryContent(examSummary['content'], theme, isExam: true),
-          );
-        }
+        tabs.add(const Tab(text: "Exam Mode"));
+        views.add(
+          _buildSummaryContent(
+            examSummary?['content'] ??
+                "Exam summary is not available for this document.\n\nTry uploading the PDF again if this persists.",
+            theme,
+            isExam: true,
+          ),
+        );
 
         if (chapterSummary != null) {
           tabs.add(const Tab(text: "Chapters"));
           views.add(_buildChapterContent(chapterSummary['chapters'], theme));
         }
 
-        return GlassContainer(
+        return Container(
+          // Inner container for summaries inside the ExpansionTile
+          // No shadow needed here as it's inside the card
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB), // Very light gray for contrast
+            borderRadius: BorderRadius.circular(16),
+          ),
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: _TabContentHelper(tabs: tabs, views: views, theme: theme),
         );
@@ -586,28 +629,47 @@ class SummaryView extends StatelessWidget {
     bool isExam = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Icon(
-                isExam ? Icons.school_outlined : Icons.auto_awesome,
-                size: 18,
-                color: theme.colorScheme.primary,
+                isExam ? Icons.school_rounded : Icons.auto_awesome_rounded,
+                size: 20,
+                color: const Color(0xFF7C3AED),
               ),
               const SizedBox(width: 8),
               Text(
                 isExam ? "Exam Prep" : "AI Summary",
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w600,
+                style: const TextStyle(
+                  color: Color(0xFF7C3AED),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
                 ),
+              ),
+              const Spacer(),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(
+                  Icons.share_rounded,
+                  size: 20,
+                  color: Color(0xFF7C3AED),
+                ),
+                onPressed: () {
+                  final String subject = isExam
+                      ? "Exam Prep Summary"
+                      : "AI Summary";
+                  final String shareText =
+                      "$subject:\n\n$content\n\nGenerated by Pdify 📄";
+                  Share.share(shareText, subject: subject);
+                },
+                tooltip: 'Share Summary',
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           _buildFormattedText(content, theme),
         ],
       ),
@@ -622,9 +684,16 @@ class SummaryView extends StatelessWidget {
         return ExpansionTile(
           title: Text(
             chapter['title'] ?? "Chapter",
-            style: theme.textTheme.titleMedium?.copyWith(fontSize: 15),
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+              color: Colors.black87,
+            ),
           ),
           childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          iconColor: const Color(0xFF7C3AED),
+          collapsedIconColor: Colors.black45,
+          shape: const Border(), // Remove borders
           children: [_buildFormattedText(chapter['summary'] ?? "", theme)],
         );
       }).toList(),
@@ -641,9 +710,10 @@ class SummaryView extends StatelessWidget {
         spans.add(
           TextSpan(
             text: text.substring(lastEnd, match.start),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              height: 1.7,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+            style: const TextStyle(
+              height: 1.6,
+              color: Color(0xFF374151), // Gray 700
+              fontSize: 15,
             ),
           ),
         );
@@ -651,10 +721,11 @@ class SummaryView extends StatelessWidget {
       spans.add(
         TextSpan(
           text: match.group(1),
-          style: theme.textTheme.bodyMedium?.copyWith(
-            height: 1.7,
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onSurface,
+          style: const TextStyle(
+            height: 1.6,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF111827), // Gray 900
+            fontSize: 15,
           ),
         ),
       );
@@ -664,9 +735,10 @@ class SummaryView extends StatelessWidget {
       spans.add(
         TextSpan(
           text: text.substring(lastEnd),
-          style: theme.textTheme.bodyMedium?.copyWith(
-            height: 1.7,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+          style: const TextStyle(
+            height: 1.6,
+            color: Color(0xFF374151), // Gray 700
+            fontSize: 15,
           ),
         ),
       );
@@ -724,68 +796,131 @@ class _TabContentHelperState extends State<_TabContentHelper>
         TabBar(
           controller: _controller,
           tabs: widget.tabs,
-          labelColor: widget.theme.colorScheme.primary,
-          unselectedLabelColor: widget.theme.colorScheme.onSurface.withValues(
-            alpha: 0.6,
-          ),
-          indicatorColor: widget.theme.colorScheme.primary,
+          labelColor: const Color(0xFF7C3AED),
+          unselectedLabelColor: Colors.black45,
+          indicatorColor: const Color(0xFF7C3AED),
           indicatorSize: TabBarIndicatorSize.label,
           dividerColor: Colors.transparent,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
           onTap: (index) {
             setState(() {});
           },
         ),
-        Divider(
-          height: 1,
-          color: widget.theme.colorScheme.outline.withValues(alpha: 0.1),
-        ),
+        Divider(height: 1, color: Colors.black.withValues(alpha: 0.05)),
         widget.views[_controller.index],
       ],
     );
   }
 }
 
-class GlassContainer extends StatelessWidget {
-  final Widget child;
-  final EdgeInsetsGeometry? margin;
-  final EdgeInsetsGeometry? padding;
-  final double blur;
-  final double opacity;
-  final Color color;
-  final BorderRadius? borderRadius;
+/// Gate widget that requires watching a rewarded ad before showing summary
+class _RewardedSummaryGate extends StatefulWidget {
+  final String pdfId;
 
-  const GlassContainer({
-    super.key,
-    required this.child,
-    this.margin,
-    this.padding,
-    this.blur = 10,
-    this.opacity = 0.4,
-    this.color = Colors.white,
-    this.borderRadius,
-  });
+  const _RewardedSummaryGate({required this.pdfId});
+
+  @override
+  State<_RewardedSummaryGate> createState() => _RewardedSummaryGateState();
+}
+
+class _RewardedSummaryGateState extends State<_RewardedSummaryGate> {
+  bool _isUnlocked = false;
+  bool _isLoading = false;
+
+  Future<void> _watchAdToUnlock() async {
+    setState(() => _isLoading = true);
+
+    final adShown = await AdService().showRewardedAd(
+      onRewarded: () {
+        if (mounted) {
+          setState(() {
+            _isUnlocked = true;
+            _isLoading = false;
+          });
+        }
+      },
+    );
+
+    if (!adShown && mounted) {
+      // Ad not ready, show message
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ad not ready. Please try again in a moment.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: margin,
-      child: ClipRRect(
-        borderRadius: borderRadius ?? BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-          child: Container(
-            padding: padding,
+    if (_isUnlocked) {
+      return SummaryView(pdfId: widget.pdfId);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: opacity),
-              borderRadius: borderRadius ?? BorderRadius.circular(20),
+              color: const Color(0xFF7C3AED).withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.2),
-                width: 1.5,
+                color: const Color(0xFF7C3AED).withValues(alpha: 0.2),
               ),
             ),
-            child: child,
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.play_circle_outline_rounded,
+                  size: 48,
+                  color: Color(0xFF7C3AED),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Watch a short ad to view this summary',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _isLoading ? null : _watchAdToUnlock,
+                    icon: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.play_arrow_rounded),
+                    label: Text(
+                      _isLoading ? 'Loading Ad...' : 'Watch Ad & Unlock',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF7C3AED),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

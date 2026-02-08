@@ -224,35 +224,68 @@ exports.processPdf = onDocumentCreated("pdfs/{pdfId}", async (event) => {
 
         const modelName = "gemini-2.5-flash";
         const fallbackModelName = "gemini-2.0-flash-exp";
-        let usedModelName = modelName;
 
-        const generateContent = async (model) => {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: isOcrText
-                                ? `The following text comes from handwritten class notes. Clean and organize it before summarizing:\n\n${text.substring(0, 30000)}`
-                                : `Summarize this PDF content for a student, handling key points and concepts concisely:\n\n${text.substring(0, 30000)}`
+        const generateContent = async (model, promptTextOverride = null) => {
+            const getUrl = (m) => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`;
+
+            const makeRequest = async (m) => {
+                return fetch(getUrl(m), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: promptTextOverride || (isOcrText
+                                    ? `The following text comes from handwritten class notes. Clean and organize it before summarizing:\n\n${text.substring(0, 30000)}`
+                                    : `Summarize this PDF content for a student, handling key points and concepts concisely:\n\n${text.substring(0, 30000)}`)
+                            }]
                         }]
-                    }]
-                })
-            });
-            return response;
+                    })
+                });
+            };
+
+            let retries = 3;
+            let delay = 2000;
+            let currentModel = model;
+
+            while (retries >= 0) {
+                try {
+                    const response = await makeRequest(currentModel);
+
+                    if (response.status === 429 || response.status === 404 || response.status === 503) {
+                        console.warn(`Error ${response.status} for ${currentModel}. Retrying...`);
+
+                        // If primary fails, switch to fallback immediately for next try
+                        if (currentModel === modelName && fallbackModelName) {
+                            console.log(`Switching to fallback model: ${fallbackModelName}`);
+                            currentModel = fallbackModelName;
+                            // Don't wait long for model switch, just retry immediately
+                            delay = 1000;
+                        } else {
+                            // If fallback also fails, wait and retry
+                            if (retries === 0) return { response, usedModel: currentModel };
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            delay *= 2;
+                        }
+
+                        retries--;
+                        continue;
+                    }
+
+                    return { response, usedModel: currentModel };
+                } catch (err) {
+                    console.error("Fetch error:", err);
+                    if (retries === 0) throw err;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    retries--;
+                    delay *= 2;
+                }
+            }
+            // Should not reach here, but as a fallback
+            throw new Error("Failed to generate content after multiple retries.");
         };
 
-        let response = await generateContent(modelName);
-
-        if (response.status === 404) {
-            console.warn(`Model ${modelName} not found, trying fallback ${fallbackModelName}`);
-            usedModelName = fallbackModelName;
-            response = await generateContent(fallbackModelName);
-        }
+        const { response, usedModel: usedModelName } = await generateContent(modelName);
 
         if (!response.ok) {
             const errorBody = await response.text();
@@ -286,14 +319,7 @@ exports.processPdf = onDocumentCreated("pdfs/{pdfId}", async (event) => {
 Content:
 ${text.substring(0, 25000)}`;
 
-            const examUrl = `https://generativelanguage.googleapis.com/v1beta/models/${usedModelName}:generateContent?key=${apiKey}`;
-            const examResponse = await fetch(examUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: examPrompt }] }]
-                })
-            });
+            const { response: examResponse } = await generateContent(usedModelName, examPrompt);
 
             if (examResponse.ok) {
                 const examJson = await examResponse.json();
@@ -329,14 +355,7 @@ ${text.substring(0, 25000)}`;
                 const generateChapterSummary = async (chapter, chapterIndex) => {
                     const chapterPrompt = `Summarize this chapter/section concisely for a student. Focus on key concepts and takeaways.\n\nTitle: ${chapter.title}\n\nContent:\n${chapter.content}`;
 
-                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${usedModelName}:generateContent?key=${apiKey}`;
-                    const chapterResponse = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents: [{ parts: [{ text: chapterPrompt }] }]
-                        })
-                    });
+                    const { response: chapterResponse } = await generateContent(usedModelName, chapterPrompt);
 
                     if (!chapterResponse.ok) {
                         console.warn(`Chapter ${chapterIndex + 1} summary failed: ${chapterResponse.status}`);
