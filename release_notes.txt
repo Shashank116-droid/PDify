@@ -1,0 +1,12 @@
+Initial Release of PDify (v1.0.0)
+
+🚀 What's New:
+*   **AI PDF Summarizer:** Summarize long documents instantly.
+*   **Chat with PDF:** Ask questions about your file content.
+*   **Smart Exam Mode:** Generate practice questions and key terminology.
+*   **Image to PDF:** Convert photos to searchable PDF documents.
+*   **Profile Management:** Login securely via Google or Email.
+*   **Privacy First:** Account deletion and data management included.
+*   **In-App Updates:** Stay up to date automatically.
+
+Thank you for testing PDify! Your feedback helps us improve.

@@ -1,0 +1,93 @@
+Google Play Store Listing Details
+
+Use this information to fill out your app's store listing.
+
+1. Store Listing (Text)
+
+Field | Content | Character Limit
+--- | --- | ---
+App Name | PDify: AI Summarizer & PDF Tool | 30 chars
+Short Description | Summarize PDFs instantly with AI. Chat with documents & convert to text. | 80 chars
+
+Full Description (4000 chars max)
+---------------------------------
+Unlock the power of your documents with PDify, the ultimate AI-powered PDF assistant. Whether you're a student, researcher, or professional, PDify saves you hours of reading by instantly summarizing unlimited PDF files.
+
+Key Features:
+*   AI PDF Summarizer: Get concise, accurate summaries of long documents in seconds.
+*   Chapter-by-Chapter Breakdown: Automatically segment and summarize complex reports and textbooks.
+*   Smart Exam Mode: Generate practice questions and key takeaways to help you study smarter.
+*   Chat with PDF: Ask questions about your document and get instant answers.
+*   Image to PDF: Convert your scanned images or photos into searchable PDF documents.
+*   Secure & Private: Your data is processed securely and you represent full control over your files.
+*   Clean & Modern UI: Enjoy a beautiful, ad-supported experience designed for productivity.
+
+Stop drowning in information. Let PDify help you learn faster and work smarter. Download now and turn your PDFs into insights!
+
+---
+
+2. Graphics (Assets to Upload)
+
+You need to create and upload these images.
+
+Asset Type | Size (Pixels) | Requirements
+--- | --- | ---
+App Icon | 512 x 512 | PNG, Max 1MB. Use `assets/images/logo.png` (high-res version).
+Feature Graphic | 1024 x 500 | JPG/PNG. No transparency. This is the banner shown at the top of the listing.
+Phone Screenshots | Min 320px, Max 3840px | Upload 2-8 screenshots. Aspect ratio 9:16 (vertical).
+Tablet Screenshots | Min 320px, Max 3840px | Optional but recommended for "Tablet" category visibility.
+
+Tip: Use a tool like Canva or Previewed.app to make professional screenshots.
+
+---
+
+3. Privacy & Legal
+
+*   Privacy Policy URL:
+    *   You created `privacy_policy.txt` in your project folder.
+    *   Action: Copy the text from that file, paste it into a public site (e.g., Google Sites, GitHub Gist, or a free host), and paste the link here.
+
+---
+
+4. Data Safety Form (Crucial!)
+
+Google will ask exactly what data you collect. Fill it out as follows based on your code:
+
+Q: Does your app collect or share any user data?
+> Yes
+
+Q: Is all of the user data collected by your app encrypted in transit?
+> Yes (https/ssl via Firebase)
+
+Q: Do you provide a way for users to request that their data be deleted?
+> Yes (You implemented the "Delete Account" feature!)
+
+*   **Data Deletion URL:** (Required by Play Store)
+    *   Upload `account_deletion.html` to a website (e.g., GitHub Pages).
+    *   Paste the link here.
+
+Data Types to Select:
+
+1.  Personal Info -> Email Address
+    *   Collected? Yes
+    *   Shared? No (unless you share with ad networks, usually "No" for Auth)
+    *   Purpose: App Functionality, Account Management
+2.  Files and docs -> Other files (PDFs)
+    *   Collected? Yes
+    *   Shared? No (Stored in Firebase Storage)
+    *   Purpose: App Functionality
+3.  Device or other IDs
+    *   Collected? Yes
+    *   Shared? Yes (via AdMob)
+    *   Purpose: Advertising or Marketing, Analytics
+
+---
+
+5. Other Settings
+
+*   App Access: "Functionality is restricted" (since you require login).
+    *   Provide a test user credential (e.g., demo@example.com / password123).
+*   Ads: "Yes, my app contains ads".
+*   Target Audience: 18+ (Safest to avoid strict family policies).
+*   News App: No.
+*   COVID-19 Contact Tracing: No.
