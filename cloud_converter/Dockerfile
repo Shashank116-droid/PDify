@@ -1,13 +1,22 @@
 FROM python:3.11-slim
 
-# Install LibreOffice
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install LibreOffice and dependencies
+# libreoffice-draw/jre for PDF import
+# libgl1/libglib2.0-0 for pdf2docx (opencv)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     libreoffice-writer \
     libreoffice-impress \
+    libreoffice-draw \
     libreoffice-common \
+    default-jre \
+    libreoffice-java-common \
     fonts-dejavu \
     fonts-liberation \
+    libgl1 \
+    libglib2.0-0 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
