@@ -4,7 +4,7 @@ import 'dart:ui' as ui;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:path_provider/path_provider.dart';
+
 import 'package:pdf_manipulator/pdf_manipulator.dart';
 import 'package:pdify/ad_service.dart';
 import 'package:pdify/conversion_service.dart';
@@ -12,6 +12,9 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdfx/pdfx.dart' as pdfx;
 import 'package:share_plus/share_plus.dart';
+import 'package:pdify/widgets/glass_card.dart';
+import 'package:pdify/widgets/primary_button.dart';
+import 'package:pdify/widgets/mesh_background_scaffold.dart';
 
 class ConvertScreen extends StatefulWidget {
   const ConvertScreen({super.key});
@@ -210,14 +213,12 @@ class _ConvertScreenState extends State<ConvertScreen> {
       );
 
       if (result == null || result.files.length < 2) {
-        if (result != null && result.files.length == 1) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please select at least 2 PDFs to merge.'),
-              ),
-            );
-          }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please select at least 2 PDFs to merge.'),
+            ),
+          );
         }
         return;
       }
@@ -722,6 +723,20 @@ class _ConvertScreenState extends State<ConvertScreen> {
         return;
 
       final filePath = result.files.single.path!;
+      final originalName = result.files.single.name;
+      final defaultName = originalName.replaceAll(
+        RegExp(r'\.docx?$', caseSensitive: false),
+        '',
+      );
+
+      final fileName = await _showFileNameDialog(
+        defaultName: defaultName,
+        fileCount: 1,
+        suffix: '.pdf',
+        buttonLabel: 'Convert',
+      );
+
+      if (fileName == null) return;
 
       setState(() {
         _isProcessing = true;
@@ -733,6 +748,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
       final outputPath = await ConversionService().convertToPdf(
         inputFilePath: filePath,
         outputDir: outputDir.path,
+        newFileName: fileName,
       );
 
       setState(() {
@@ -768,6 +784,20 @@ class _ConvertScreenState extends State<ConvertScreen> {
         return;
 
       final filePath = result.files.single.path!;
+      final originalName = result.files.single.name;
+      final defaultName = originalName.replaceAll(
+        RegExp(r'\.pptx?$', caseSensitive: false),
+        '',
+      );
+
+      final fileName = await _showFileNameDialog(
+        defaultName: defaultName,
+        fileCount: 1,
+        suffix: '.pdf',
+        buttonLabel: 'Convert',
+      );
+
+      if (fileName == null) return;
 
       setState(() {
         _isProcessing = true;
@@ -779,6 +809,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
       final outputPath = await ConversionService().convertToPdf(
         inputFilePath: filePath,
         outputDir: outputDir.path,
+        newFileName: fileName,
       );
 
       setState(() {
@@ -814,6 +845,20 @@ class _ConvertScreenState extends State<ConvertScreen> {
         return;
 
       final filePath = result.files.single.path!;
+      final originalName = result.files.single.name;
+      final defaultName = originalName.replaceAll(
+        RegExp(r'\.pdf$', caseSensitive: false),
+        '',
+      );
+
+      final fileName = await _showFileNameDialog(
+        defaultName: defaultName,
+        fileCount: 1,
+        suffix: '.docx',
+        buttonLabel: 'Convert',
+      );
+
+      if (fileName == null) return;
 
       setState(() {
         _isProcessing = true;
@@ -826,6 +871,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
         inputFilePath: filePath,
         outputDir: outputDir.path,
         outputFormat: 'docx',
+        newFileName: fileName,
       );
 
       setState(() {
@@ -861,6 +907,20 @@ class _ConvertScreenState extends State<ConvertScreen> {
         return;
 
       final filePath = result.files.single.path!;
+      final originalName = result.files.single.name;
+      final defaultName = originalName.replaceAll(
+        RegExp(r'\.pdf$', caseSensitive: false),
+        '',
+      );
+
+      final fileName = await _showFileNameDialog(
+        defaultName: defaultName,
+        fileCount: 1,
+        suffix: '.pptx',
+        buttonLabel: 'Convert',
+      );
+
+      if (fileName == null) return;
 
       setState(() {
         _isProcessing = true;
@@ -873,6 +933,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
         inputFilePath: filePath,
         outputDir: outputDir.path,
         outputFormat: 'pptx',
+        newFileName: fileName,
       );
 
       setState(() {
@@ -906,9 +967,10 @@ class _ConvertScreenState extends State<ConvertScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    const color1 = Color(0xFF7C3AED);
-    const color2 = Color(0xFFFF6B6B);
-    const color3 = Color(0xFF00D9FF);
+    // Design Tokens
+    // const color1 = Color(0xFF7C3AED); // Vivid Purple
+    // const color2 = Color(0xFFFF6B6B); // Coral Red
+    // const color3 = Color(0xFF00D9FF); // Cyan
 
     // Feature definitions
     final features = [
@@ -984,90 +1046,47 @@ class _ConvertScreenState extends State<ConvertScreen> {
       ),
     ];
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.transform_rounded, color: Color(0xFF7C3AED)),
-            const SizedBox(width: 8),
-            Text(
-              "Tools",
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF7C3AED),
-                letterSpacing: -0.5,
-              ),
-            ),
-          ],
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
+    return MeshBackgroundScaffold(
+      title: 'Tools',
       body: Stack(
         children: [
-          // --- Gradient Mesh Background ---
-          Positioned(top: -80, right: -60, child: _buildMeshBlob(color1, 280)),
-          Positioned(
-            bottom: 100,
-            left: -60,
-            child: _buildMeshBlob(color2, 300),
-          ),
-          Positioned(
-            bottom: -50,
-            right: -40,
-            child: _buildMeshBlob(color3, 250),
-          ),
-
-          // Blur overlay
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-              child: Container(color: Colors.white.withValues(alpha: 0.3)),
-            ),
-          ),
-
-          // --- Content ---
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Grid of feature tiles
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 1.0,
-                        ),
-                    itemCount: features.length,
-                    itemBuilder: (context, index) {
-                      final f = features[index];
-                      return _buildGridTile(f, theme);
-                    },
+          SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Grid of feature tiles
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.0,
                   ),
+                  itemCount: features.length,
+                  itemBuilder: (context, index) {
+                    final f = features[index];
+                    return _buildGridTile(f, theme);
+                  },
+                ),
 
-                  const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-                  // Status Display
-                  if (_isProcessing || _statusMessage != null)
-                    _buildStatusCard(theme),
-                ],
-              ),
+                // Status Display
+                if (_isProcessing || _statusMessage != null)
+                  _buildStatusCard(theme),
+              ],
             ),
+          ),
+          const Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: BannerAdWidget(),
           ),
         ],
-      ),
-      bottomNavigationBar: Container(
-        color: Colors.white,
-        child: const SafeArea(child: BannerAdWidget()),
       ),
     );
   }
@@ -1075,31 +1094,19 @@ class _ConvertScreenState extends State<ConvertScreen> {
   Widget _buildGridTile(_FeatureTile feature, ThemeData theme) {
     return GestureDetector(
       onTap: feature.onTap,
-      child: Container(
+      child: GlassCard(
+        borderRadius: 20,
+        blur: 15,
+        opacity: 0.6,
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: feature.color.withValues(alpha: 0.12),
-              blurRadius: 20,
-              offset: const Offset(0, 6),
-            ),
-          ],
-          border: Border.all(
-            color: feature.color.withValues(alpha: 0.15),
-            width: 1,
-          ),
-        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: feature.color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(feature.icon, color: feature.color, size: 28),
             ),
@@ -1107,10 +1114,9 @@ class _ConvertScreenState extends State<ConvertScreen> {
             Text(
               feature.title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
                 fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: Colors.black87,
               ),
             ),
             const SizedBox(height: 4),
@@ -1119,7 +1125,10 @@ class _ConvertScreenState extends State<ConvertScreen> {
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: Colors.black45),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                fontSize: 11,
+              ),
             ),
           ],
         ),
@@ -1127,56 +1136,32 @@ class _ConvertScreenState extends State<ConvertScreen> {
     );
   }
 
-  Widget _buildMeshBlob(Color color, double size) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [color.withValues(alpha: 0.6), color.withValues(alpha: 0.0)],
-        ),
-      ),
-    );
-  }
-
   Widget _buildStatusCard(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _isProcessing
-            ? const Color(0xFF7C3AED).withValues(alpha: 0.05)
-            : _isSuccess
-            ? const Color(0xFF10B981).withValues(alpha: 0.05)
-            : const Color(0xFFEF4444).withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: _isProcessing
-              ? const Color(0xFF7C3AED).withValues(alpha: 0.2)
-              : _isSuccess
-              ? const Color(0xFF10B981).withValues(alpha: 0.2)
-              : const Color(0xFFEF4444).withValues(alpha: 0.2),
-        ),
-      ),
+    final statusColor = _isProcessing
+        ? const Color(0xFF7C3AED)
+        : _isSuccess
+        ? const Color(0xFF10B981)
+        : const Color(0xFFEF4444);
+
+    return GlassCard(
+      borderRadius: 16,
       child: Column(
         children: [
           Row(
             children: [
               if (_isProcessing)
-                const SizedBox(
+                SizedBox(
                   width: 24,
                   height: 24,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    color: Color(0xFF7C3AED),
+                    color: statusColor,
                   ),
                 )
               else
                 Icon(
                   _isSuccess ? Icons.check_circle_rounded : Icons.error_rounded,
-                  color: _isSuccess
-                      ? const Color(0xFF10B981)
-                      : const Color(0xFFEF4444),
+                  color: statusColor,
                   size: 24,
                 ),
               const SizedBox(width: 16),
@@ -1185,11 +1170,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
                   _statusMessage ?? "",
                   style: TextStyle(
                     fontSize: 14,
-                    color: _isProcessing
-                        ? const Color(0xFF7C3AED)
-                        : _isSuccess
-                        ? const Color(0xFF047857)
-                        : const Color(0xFFB91C1C),
+                    color: statusColor,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1198,25 +1179,14 @@ class _ConvertScreenState extends State<ConvertScreen> {
           ),
           if (_isSuccess && _shareablePaths.isNotEmpty) ...[
             const SizedBox(height: 16),
-            SizedBox(
+            PrimaryButton(
+              text: _shareablePaths.length == 1
+                  ? 'Share File'
+                  : 'Share ${_shareablePaths.length} Files',
+              onPressed: _shareFiles,
+              icon: Icons.share_rounded,
+              backgroundColor: const Color(0xFF10B981),
               width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _shareFiles,
-                icon: const Icon(Icons.share_rounded),
-                label: Text(
-                  _shareablePaths.length == 1
-                      ? 'Share File'
-                      : 'Share ${_shareablePaths.length} Files',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
             ),
           ],
         ],

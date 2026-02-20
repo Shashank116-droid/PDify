@@ -1,0 +1,61 @@
+Analyzing 5 items...                                            
+
+warning - Unused import: 'package:path_provider/path_provider.dart' - lib\convert_screen.dart:7:8 - unused_import
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:292:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:451:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:725:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:786:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:847:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:909:9 - curly_braces_in_flow_control_structures
+warning - The value of the local variable 'color1' isn't used - lib\convert_screen.dart:972:11 - unused_local_variable
+warning - The value of the local variable 'color2' isn't used - lib\convert_screen.dart:973:11 - unused_local_variable
+warning - The value of the local variable 'color3' isn't used - lib\convert_screen.dart:974:11 - unused_local_variable
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\convert_screen.dart:1103:38 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\convert_screen.dart:1124:58 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\convert_screen.dart:1196:13 - deprecated_member_use
+   info - 'shareXFiles' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\convert_screen.dart:1196:19 - deprecated_member_use
+   info - The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' - lib\home_screen.dart:2:8 - unnecessary_import
+warning - The value of the local variable 'color1' isn't used - lib\home_screen.dart:122:11 - unused_local_variable
+warning - The value of the local variable 'color2' isn't used - lib\home_screen.dart:123:11 - unused_local_variable
+warning - The value of the local variable 'color3' isn't used - lib\home_screen.dart:124:11 - unused_local_variable
+warning - The value of the local variable 'color4' isn't used - lib\home_screen.dart:125:11 - unused_local_variable
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\home_screen.dart:167:60 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\home_screen.dart:174:35 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\home_screen.dart:183:35 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\home_screen.dart:223:46 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\home_screen.dart:244:57 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\home_screen.dart:370:44 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\home_screen.dart:383:44 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\home_screen.dart:399:44 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\home_screen.dart:418:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\home_screen.dart:423:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\home_screen.dart:428:43 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\home_screen.dart:592:19 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\home_screen.dart:592:25 - deprecated_member_use
+   info - The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' - lib\login_screen.dart:1:8 - unnecessary_import
+warning - The value of the field 'color2' isn't used - lib\login_screen.dart:28:16 - unused_field
+warning - The value of the field 'color3' isn't used - lib\login_screen.dart:29:16 - unused_field
+warning - The value of the field 'color4' isn't used - lib\login_screen.dart:30:16 - unused_field
+  error - Expected an identifier - lib\login_screen.dart:487:13 - missing_identifier
+  error - Expected to find ')' - lib\login_screen.dart:487:13 - expected_token
+  error - Expected to find ';' - lib\login_screen.dart:489:9 - expected_token
+warning - Dead code - lib\login_screen.dart:489:10 - dead_code
+  error - Expected an identifier - lib\login_screen.dart:489:10 - missing_identifier
+  error - Expected to find ';' - lib\login_screen.dart:489:10 - expected_token
+  error - Unexpected text ';' - lib\login_screen.dart:489:10 - unexpected_token
+  error - Expected an identifier - lib\login_screen.dart:490:7 - missing_identifier
+  error - Expected to find ';' - lib\login_screen.dart:490:7 - expected_token
+  error - Unexpected text ';' - lib\login_screen.dart:490:7 - unexpected_token
+  error - Expected an identifier - lib\login_screen.dart:490:8 - missing_identifier
+  error - Expected to find ';' - lib\login_screen.dart:490:8 - expected_token
+  error - Unexpected text ';' - lib\login_screen.dart:490:8 - unexpected_token
+  error - Expected an identifier - lib\login_screen.dart:491:5 - missing_identifier
+  error - Unexpected text ';' - lib\login_screen.dart:491:5 - unexpected_token
+   info - Unnecessary empty statement - lib\login_screen.dart:491:6 - empty_statements
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\profile_screen.dart:124:56 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\profile_screen.dart:126:58 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\profile_screen.dart:157:67 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\mesh_background_scaffold.dart:91:56 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\mesh_background_scaffold.dart:112:26 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\mesh_background_scaffold.dart:112:50 - deprecated_member_use
+

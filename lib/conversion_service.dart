@@ -16,11 +16,13 @@ class ConversionService {
   Future<String?> convertToPdf({
     required String inputFilePath,
     required String outputDir,
+    String? newFileName,
   }) async {
     try {
       final file = File(inputFilePath);
       final fileName = path.basename(inputFilePath);
-      final baseName = path.basenameWithoutExtension(inputFilePath);
+      final baseName =
+          newFileName ?? path.basenameWithoutExtension(inputFilePath);
 
       final uri = Uri.parse('$_baseUrl/convert/to-pdf');
       final request = http.MultipartRequest('POST', uri);
@@ -36,7 +38,11 @@ class ConversionService {
 
       if (response.statusCode == 200) {
         final bytes = await response.stream.toBytes();
-        final outputPath = '$outputDir/$baseName.pdf';
+        // If the user provided a name, assume it might not have the extension
+        final nameWithExt = baseName.toLowerCase().endsWith('.pdf')
+            ? baseName
+            : '$baseName.pdf';
+        final outputPath = '$outputDir/$nameWithExt';
         await File(outputPath).writeAsBytes(bytes);
         return outputPath;
       } else {
@@ -55,11 +61,13 @@ class ConversionService {
     required String inputFilePath,
     required String outputDir,
     required String outputFormat,
+    String? newFileName,
   }) async {
     try {
       final file = File(inputFilePath);
       final fileName = path.basename(inputFilePath);
-      final baseName = path.basenameWithoutExtension(inputFilePath);
+      final baseName =
+          newFileName ?? path.basenameWithoutExtension(inputFilePath);
 
       final uri = Uri.parse('$_baseUrl/convert/from-pdf');
       final request = http.MultipartRequest('POST', uri);
@@ -76,7 +84,11 @@ class ConversionService {
 
       if (response.statusCode == 200) {
         final bytes = await response.stream.toBytes();
-        final outputPath = '$outputDir/$baseName.$outputFormat';
+        // Check extension
+        final nameWithExt = baseName.toLowerCase().endsWith('.$outputFormat')
+            ? baseName
+            : '$baseName.$outputFormat';
+        final outputPath = '$outputDir/$nameWithExt';
         await File(outputPath).writeAsBytes(bytes);
         return outputPath;
       } else {

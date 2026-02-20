@@ -1,0 +1,16 @@
+Analyzing 4 items...                                            
+
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:290:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:449:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:723:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:784:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:845:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:907:9 - curly_braces_in_flow_control_structures
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\convert_screen.dart:1201:13 - deprecated_member_use
+   info - 'shareXFiles' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\convert_screen.dart:1201:19 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\home_screen.dart:601:19 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\home_screen.dart:601:25 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\profile_screen.dart:126:60 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\profile_screen.dart:128:62 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\profile_screen.dart:160:35 - deprecated_member_use
+

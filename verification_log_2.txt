@@ -1,0 +1,20 @@
+Analyzing 5 items...                                            
+
+warning - Unused import: 'package:path_provider/path_provider.dart' - lib\convert_screen.dart:7:8 - unused_import
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:290:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:449:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:723:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:784:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:845:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\convert_screen.dart:907:9 - curly_braces_in_flow_control_structures
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\convert_screen.dart:1102:38 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\convert_screen.dart:1123:58 - deprecated_member_use
+  error - The method 'shareXFiles' isn't defined for the type 'SharePlus' - lib\convert_screen.dart:1195:23 - undefined_method
+  error - Instance member 'share' can't be accessed using static access - lib\home_screen.dart:595:29 - static_access_to_instance_member
+  error - The argument type 'String' can't be assigned to the parameter type 'ShareParams'.  - lib\home_screen.dart:595:35 - argument_type_not_assignable
+  error - The named parameter 'subject' isn't defined - lib\home_screen.dart:595:46 - undefined_named_parameter
+   info - The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' - lib\login_screen.dart:1:8 - unnecessary_import
+warning - The value of the field 'color2' isn't used - lib\login_screen.dart:28:16 - unused_field
+warning - The value of the field 'color3' isn't used - lib\login_screen.dart:29:16 - unused_field
+warning - The value of the field 'color4' isn't used - lib\login_screen.dart:30:16 - unused_field
+

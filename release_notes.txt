@@ -1,12 +1,18 @@
-Initial Release of PDify (v1.0.0)
+What's New in Version 1.0.2:
 
-🚀 What's New:
-*   **AI PDF Summarizer:** Summarize long documents instantly.
-*   **Chat with PDF:** Ask questions about your file content.
-*   **Smart Exam Mode:** Generate practice questions and key terminology.
-*   **Image to PDF:** Convert photos to searchable PDF documents.
-*   **Profile Management:** Login securely via Google or Email.
-*   **Privacy First:** Account deletion and data management included.
-*   **In-App Updates:** Stay up to date automatically.
+🎨 Enhanced Dark Theme
+- Experience a cleaner, more immersive look with our updated Glassmorphic UI.
+- Improved readability with new white text on dark backgrounds across the app.
+- Refined Splash Screen to match the app's visual identity.
 
-Thank you for testing PDify! Your feedback helps us improve.
+✨ UI Improvements
+- Login Screen refreshed with clearer text and intuitive design.
+- Home Screen now features a sleek, translucent Summary Card for better focus.
+- Bottom Navigation bar seamlessly integrated with the glass theme.
+
+🛠️ Fixes & Optimizations
+- Resolved Google Sign-In issues for smoother authentication.
+- Fixed layout issues with banner ads on various screens.
+- Improved app stability and performance.
+
+Enjoying Pdify? Rate us 5 stars! 🌟

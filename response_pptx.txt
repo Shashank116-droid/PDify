@@ -1,0 +1,36 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0* Host pdify-converter-z2x52vmfja-uc.a.run.app:443 was resolved.
+* IPv6: 2600:1901:81d4:200::, 2600:1901:81d5:200::, 2600:1900:4244:200::, 2600:1900:4242:200::, 2600:1900:4241:200::, 2600:1900:4245:200::, 2600:1900:4243:200::, 2600:1900:4240:200::
+* IPv4: 34.143.74.2, 34.143.79.2, 34.143.73.2, 34.143.75.2, 34.143.76.2, 34.143.72.2, 34.143.77.2, 34.143.78.2
+*   Trying [2600:1901:81d4:200::]:443...
+*   Trying 34.143.74.2:443...
+* schannel: disabled automatic use of client certificate
+* ALPN: curl offers http/1.1
+* ALPN: server accepted http/1.1
+* Established connection to pdify-converter-z2x52vmfja-uc.a.run.app (2600:1901:81d4:200:: port 443) from 2405:201:6016:d033:8ff:f8f6:9067:a791 port 52340 
+* using HTTP/1.x
+> POST /convert/from-pdf HTTP/1.1
+> Host: pdify-converter-z2x52vmfja-uc.a.run.app
+> User-Agent: curl/8.16.0
+> Accept: */*
+> Content-Length: 630
+> Content-Type: multipart/form-data; boundary=------------------------jJuKzbQsnevjpl9SG7GXOw
+> 
+} [630 bytes data]
+* upload completely sent off: 630 bytes
+100   630    0     0  100   630      0   1511 --:--:-- --:--:-- --:--:--  1514* schannel: remote party requests renegotiation
+* schannel: renegotiating SSL/TLS connection
+* schannel: SSL/TLS connection renegotiated
+< HTTP/1.1 400 Bad Request
+< content-type: application/json
+< x-cloud-trace-context: 8d5bf4b71e9671f2044f3d4bd97a46d2;o=1
+< date: Tue, 17 Feb 2026 15:59:13 GMT
+< server: Google Frontend
+< Content-Length: 29
+< Alt-Svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+< 
+{ [29 bytes data]
+100   659  100    29  100   630     48   1057 --:--:-- --:--:-- --:--:--  1107
+* Connection #0 to host pdify-converter-z2x52vmfja-uc.a.run.app:443 left intact
+{"error":"No file provided"}
