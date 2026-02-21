@@ -48,9 +48,7 @@ class MeshBackgroundScaffold extends StatelessWidget {
                           title!,
                           style: theme.textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w800,
-                            color: theme.brightness == Brightness.dark
-                                ? Colors.white
-                                : const Color(0xFF7C3AED),
+                            color: const Color(0xFF7C3AED),
                             letterSpacing: -0.5,
                           ),
                         ),
