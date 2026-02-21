@@ -23,6 +23,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final User? user = FirebaseAuth.instance.currentUser;
   bool _isUploading = false;
+  bool _isDeleting = false;
 
   @override
   void initState() {
@@ -113,6 +114,91 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _deleteAllPdfs() async {
+    final userId = user?.uid;
+    if (userId == null) return;
+
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete All PDFs'),
+        content: const Text(
+          'Are you sure you want to delete all your PDFs and their summaries? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete All'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isDeleting = true);
+
+    try {
+      // 1. Get all PDF docs for this user
+      final pdfSnapshot = await FirebaseFirestore.instance
+          .collection('pdfs')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final batch = FirebaseFirestore.instance.batch();
+
+      for (final pdfDoc in pdfSnapshot.docs) {
+        final data = pdfDoc.data();
+        final storagePath = data['storagePath'] as String?;
+
+        // 2. Delete file from Firebase Storage
+        if (storagePath != null && storagePath.isNotEmpty) {
+          try {
+            await FirebaseStorage.instance.ref().child(storagePath).delete();
+          } catch (_) {
+            // File might already be deleted, continue
+          }
+        }
+
+        // 3. Delete associated summaries
+        final summarySnapshot = await FirebaseFirestore.instance
+            .collection('summaries')
+            .where('pdfId', isEqualTo: pdfDoc.id)
+            .get();
+        for (final summaryDoc in summarySnapshot.docs) {
+          batch.delete(summaryDoc.reference);
+        }
+
+        // 4. Delete the PDF document itself
+        batch.delete(pdfDoc.reference);
+      }
+
+      await batch.commit();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All PDFs deleted successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error deleting PDFs: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDeleting = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -125,6 +211,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return MeshBackgroundScaffold(
       title: 'Pdify',
+      actions: [
+        IconButton(
+          icon: _isDeleting
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Color(0xFF7C3AED),
+                  ),
+                )
+              : const Icon(Icons.delete_sweep_rounded),
+          tooltip: 'Delete All',
+          onPressed: _isDeleting ? null : _deleteAllPdfs,
+        ),
+      ],
       body: Stack(
         children: [
           Column(
@@ -281,6 +383,65 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _deleteSinglePdf(String docId, String? storagePath) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete PDF'),
+        content: const Text(
+          'Delete this PDF and its summaries? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      // Delete from Storage
+      if (storagePath != null && storagePath.isNotEmpty) {
+        try {
+          await FirebaseStorage.instance.ref().child(storagePath).delete();
+        } catch (_) {}
+      }
+
+      // Delete associated summaries
+      final summarySnapshot = await FirebaseFirestore.instance
+          .collection('summaries')
+          .where('pdfId', isEqualTo: docId)
+          .get();
+      final batch = FirebaseFirestore.instance.batch();
+      for (final doc in summarySnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      // Delete the PDF document
+      batch.delete(FirebaseFirestore.instance.collection('pdfs').doc(docId));
+      await batch.commit();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PDF deleted successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error deleting PDF: $e')));
+      }
+    }
+  }
+
   Widget _buildPdfItem(
     String docId,
     Map<String, dynamic> data,
@@ -314,6 +475,22 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           leading: _buildStatusIcon(status, theme),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.expand_more_rounded, color: Colors.white54),
+              IconButton(
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: Colors.redAccent,
+                  size: 22,
+                ),
+                tooltip: 'Delete',
+                onPressed: () =>
+                    _deleteSinglePdf(docId, data['storagePath'] as String?),
+              ),
+            ],
+          ),
           children: [
             if (status == 'completed')
               _RewardedSummaryGate(pdfId: docId)
@@ -335,7 +512,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Text(
                         "Summarizing...",
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.black54,
+                          color: Colors.white,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -536,6 +713,8 @@ class SummaryView extends StatelessWidget {
                 "Exam summary is not available for this document.\n\nTry uploading the PDF again if this persists.",
             theme,
             isExam: true,
+            questions: (examSummary?['questions'] as List<dynamic>?)
+                ?.cast<Map<String, dynamic>>(),
           ),
         );
 
@@ -564,6 +743,7 @@ class SummaryView extends StatelessWidget {
     String content,
     ThemeData theme, {
     bool isExam = false,
+    List<Map<String, dynamic>>? questions,
   }) {
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -594,13 +774,33 @@ class SummaryView extends StatelessWidget {
                   size: 20,
                   color: Color(0xFF7C3AED),
                 ),
-                onPressed: () {
+                onPressed: () async {
                   final String subject = isExam
                       ? "Exam Prep Summary"
                       : "AI Summary";
                   final String shareText =
                       "$subject:\n\n$content\n\nGenerated by Pdify 📄";
-                  Share.share(shareText, subject: subject);
+
+                  // Use file sharing for long content to avoid truncation
+                  try {
+                    final dir = await Directory.systemTemp.createTemp(
+                      'pdify_share',
+                    );
+                    final file = File('${dir.path}/summary.txt');
+                    await file.writeAsString(shareText);
+                    await SharePlus.instance.share(
+                      ShareParams(
+                        files: [XFile(file.path)],
+                        title: subject,
+                        text: 'Summary generated by Pdify 📄',
+                      ),
+                    );
+                  } catch (_) {
+                    // Fallback to plain text share
+                    SharePlus.instance.share(
+                      ShareParams(text: shareText, title: subject),
+                    );
+                  }
                 },
                 tooltip: 'Share Summary',
               ),
@@ -608,6 +808,94 @@ class SummaryView extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           _buildFormattedText(content, theme),
+          // Interactive Q&A section for Exam Mode
+          if (isExam && questions != null && questions.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const Divider(color: Colors.white24),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(
+                  Icons.quiz_rounded,
+                  size: 20,
+                  color: Color(0xFF7C3AED),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  "Practice Questions (${questions.length})",
+                  style: const TextStyle(
+                    color: Color(0xFF7C3AED),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...questions.asMap().entries.map((entry) {
+              final index = entry.key;
+              final qa = entry.value;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  leading: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: const Color(
+                      0xFF7C3AED,
+                    ).withValues(alpha: 0.2),
+                    child: Text(
+                      '${index + 1}',
+                      style: const TextStyle(
+                        color: Color(0xFF7C3AED),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  title: Text(
+                    qa['question'] ?? '',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  iconColor: const Color(0xFF7C3AED),
+                  collapsedIconColor: Colors.white54,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        qa['answer'] ?? 'No answer available.',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
         ],
       ),
     );
@@ -827,7 +1115,10 @@ class _RewardedSummaryGateState extends State<_RewardedSummaryGate> {
                         : const Icon(Icons.play_arrow_rounded),
                     label: Text(
                       _isLoading ? 'Loading Ad...' : 'Watch Ad & Unlock',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF7C3AED),

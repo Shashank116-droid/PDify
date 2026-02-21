@@ -1,18 +1,25 @@
-What's New in Version 1.0.2:
+What's New in Version 1.0.3:
 
-🎨 Enhanced Dark Theme
-- Experience a cleaner, more immersive look with our updated Glassmorphic UI.
-- Improved readability with new white text on dark backgrounds across the app.
-- Refined Splash Screen to match the app's visual identity.
+📚 Exam Mode Upgrade
+- Interactive Practice Questions with tap-to-reveal answers.
+- Question count adapts to PDF length for smarter study sessions.
+- Exam summary now features Key Definitions, Core Concepts & Quick Review Points.
 
-✨ UI Improvements
-- Login Screen refreshed with clearer text and intuitive design.
-- Home Screen now features a sleek, translucent Summary Card for better focus.
-- Bottom Navigation bar seamlessly integrated with the glass theme.
+🗑️ PDF Management
+- Delete individual PDFs with the new trash icon on each card.
+- Delete All option in the top bar to clear everything at once.
+- Deletes are synced — removes summaries from the cloud too.
 
-🛠️ Fixes & Optimizations
-- Resolved Google Sign-In issues for smoother authentication.
-- Fixed layout issues with banner ads on various screens.
-- Improved app stability and performance.
+📤 Improved Sharing
+- Full summaries now shared without truncation via file attachment.
+- Works reliably across all sharing apps.
+
+⚡ Faster App Launch
+- App loads significantly faster with optimized startup.
+- Reduced splash screen wait time.
+
+🎨 Visual Tweaks
+- Updated app icon.
+- Refined text colors for better readability across screens.
 
 Enjoying Pdify? Rate us 5 stars! 🌟

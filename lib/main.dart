@@ -15,8 +15,8 @@ import 'package:pdify/splash_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  // Initialize AdMob
-  await AdService().initialize();
+  // Initialize AdMob in the background (don't block app startup)
+  AdService().initialize();
   runApp(const MyApp());
 }
 

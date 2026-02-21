@@ -23,14 +23,11 @@ service cloud.firestore {
     }
 
     match /summaries/{summaryId} {
-      // Summaries are created by Cloud Functions (admin), but users need to read them
-      // We'll trust the query or fetch by ID if we link it to the PDF.
-      // But typically we query summaries where pdfId == X.
-      // For MVP, letting auth users read is okay, but better to check ownership of the PDF.
-      // Since summary has pdfId, we can't easily check PDF ownership in a simple rule without get().
-      // For MVP simplicity and constraints, we'll allow read if authenticated.
-      // Ideally: Fetch the parent PDF and check ownership. 
+      // Allow read if authenticated
       allow read: if isAuthenticated(); 
+      // Allow delete if the user owns the parent PDF
+      allow delete: if isAuthenticated() 
+        && get(/databases/$(database)/documents/pdfs/$(resource.data.pdfId)).data.userId == request.auth.uid;
     }
   }
 }
