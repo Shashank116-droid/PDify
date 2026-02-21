@@ -46,25 +46,3 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-
-# Keystore files
-*.jks
-*.keystore
-key.properties
-android/key.properties
-android/upload-keystore.jks
-
-# Google Services
-google-services.json
-GoogleService-Info.plist
-
-# Environment Variables
-.env
-.env.*
-
-# OS generated files
-Thumbs.db
-
-# Media files
-*.png
-!assets/images/*.png

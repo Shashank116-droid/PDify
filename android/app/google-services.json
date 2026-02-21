@@ -22,30 +22,6 @@
           }
         },
         {
-          "client_id": "297033738058-akqk9ubsvme48087pjl1nun557lc0884.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.vrbharat.pdify",
-            "certificate_hash": "2287896fb13f8e4f57438aef012c23c776c462f9"
-          }
-        },
-        {
-          "client_id": "297033738058-d1tnne7jfjqgp3vgbv44b3oik41k0u2v.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.vrbharat.pdify",
-            "certificate_hash": "86d8733184fc91616576688921770cd98b35a5de"
-          }
-        },
-        {
-          "client_id": "297033738058-n7fru3pklavu1rcc27hdicv9m9j8ffe7.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.vrbharat.pdify",
-            "certificate_hash": "4b24483e1c31c3a5bc949bbdaecdfe5970420999"
-          }
-        },
-        {
           "client_id": "297033738058-ov3l64j1ms0jak233i66qdml8tbqbcg1.apps.googleusercontent.com",
           "client_type": 3
         }

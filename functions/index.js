@@ -309,73 +309,34 @@ exports.processPdf = onDocumentCreated("pdfs/{pdfId}", async (event) => {
 
         // --- Exam-Oriented Summary (Additive Feature) ---
         try {
-            // Dynamically determine number of practice questions based on content length
-            const contentLength = text.trim().length;
-            let questionCount;
-            if (contentLength < 5000) {
-                questionCount = 5;
-            } else if (contentLength < 15000) {
-                questionCount = 10;
-            } else {
-                questionCount = 15;
-            }
-
             const examPrompt = `You are helping a student prepare for exams. Analyze the following content and create an exam-focused summary:
 
 1. **Key Definitions**: List important terms and their definitions
 2. **Core Concepts**: Explain the main concepts that are likely to be tested
-3. **Quick Review Points**: Bullet points for last-minute revision
-
-Do NOT include practice questions in this summary.
+3. **Potential Exam Questions**: Suggest 3-5 likely exam questions based on the content
+4. **Quick Review Points**: Bullet points for last-minute revision
 
 Content:
 ${text.substring(0, 25000)}`;
 
             const { response: examResponse } = await generateContent(usedModelName, examPrompt);
 
-            let examSummaryText = null;
             if (examResponse.ok) {
                 const examJson = await examResponse.json();
-                examSummaryText = examJson.candidates?.[0]?.content?.parts?.[0]?.text;
-            }
+                const examSummaryText = examJson.candidates?.[0]?.content?.parts?.[0]?.text;
 
-            // Generate Q&A pairs as structured JSON
-            let questions = [];
-            try {
-                const qaPrompt = `Based on the following content, generate exactly ${questionCount} practice questions with detailed answers for exam preparation.
-
-Return ONLY a valid JSON array with no other text, in this exact format:
-[{"question": "What is X?", "answer": "X is..."}, {"question": "Explain Y", "answer": "Y works by..."}]
-
-Content:
-${text.substring(0, 25000)}`;
-
-                const { response: qaResponse } = await generateContent(usedModelName, qaPrompt);
-                if (qaResponse.ok) {
-                    const qaJson = await qaResponse.json();
-                    const qaText = qaJson.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (qaText) {
-                        // Extract JSON from response (handle markdown code blocks)
-                        const jsonMatch = qaText.match(/\[[\s\S]*\]/);
-                        if (jsonMatch) {
-                            questions = JSON.parse(jsonMatch[0]);
-                        }
-                    }
+                if (examSummaryText) {
+                    await admin.firestore().collection("summaries").add({
+                        pdfId: pdfId,
+                        content: examSummaryText,
+                        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                        model: usedModelName,
+                        type: "exam" // Mark as exam summary
+                    });
+                    console.log("Exam summary generated and stored.");
                 }
-            } catch (qaError) {
-                console.warn("Q&A generation failed (non-critical):", qaError.message);
-            }
-
-            if (examSummaryText) {
-                await admin.firestore().collection("summaries").add({
-                    pdfId: pdfId,
-                    content: examSummaryText,
-                    questions: questions, // Structured Q&A array
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                    model: usedModelName,
-                    type: "exam"
-                });
-                console.log(`Exam summary generated with ${questions.length} Q&A pairs.`);
+            } else {
+                console.warn(`Exam summary generation failed: ${examResponse.status}`);
             }
         } catch (examError) {
             // Exam summary failure should NOT fail the main process
@@ -388,16 +349,16 @@ ${text.substring(0, 25000)}`;
             const chapters = detectChapters(text);
 
             if (chapters.length >= 2) {
-                console.log(`Detected ${chapters.length} chapters.Generating chapter summaries...`);
+                console.log(`Detected ${chapters.length} chapters. Generating chapter summaries...`);
 
                 // Helper to generate chapter summary
                 const generateChapterSummary = async (chapter, chapterIndex) => {
-                    const chapterPrompt = `Summarize this chapter / section concisely for a student.Focus on key concepts and takeaways.\n\nTitle: ${chapter.title} \n\nContent: \n${chapter.content} `;
+                    const chapterPrompt = `Summarize this chapter/section concisely for a student. Focus on key concepts and takeaways.\n\nTitle: ${chapter.title}\n\nContent:\n${chapter.content}`;
 
                     const { response: chapterResponse } = await generateContent(usedModelName, chapterPrompt);
 
                     if (!chapterResponse.ok) {
-                        console.warn(`Chapter ${chapterIndex + 1} summary failed: ${chapterResponse.status} `);
+                        console.warn(`Chapter ${chapterIndex + 1} summary failed: ${chapterResponse.status}`);
                         return null;
                     }
 
