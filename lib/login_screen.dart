@@ -203,7 +203,9 @@ class _LoginScreenState extends State<LoginScreen>
 
                     // Form Fields
                     TextField(
-                      style: const TextStyle(color: Colors.black),
+                      style: TextStyle(
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
+                      ),
                       controller: _emailController,
                       decoration: InputDecoration(
                         labelText: "Email",
@@ -232,7 +234,9 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                     const SizedBox(height: 16),
                     TextField(
-                      style: const TextStyle(color: Colors.black),
+                      style: TextStyle(
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
+                      ),
                       controller: _passwordController,
                       obscureText: !_isPasswordVisible,
                       decoration: InputDecoration(
@@ -350,10 +354,12 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ),
                             const SizedBox(width: 12),
-                            const Text(
+                            Text(
                               "Continue with Google",
                               style: TextStyle(
-                                color: Colors.black87,
+                                color: Theme.of(
+                                  context,
+                                ).textTheme.bodyLarge?.color,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),

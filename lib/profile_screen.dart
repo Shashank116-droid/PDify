@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:pdify/ad_service.dart';
+import 'package:pdify/providers/theme_provider.dart';
 import 'package:pdify/widgets/glass_card.dart';
 import 'package:pdify/widgets/primary_button.dart';
 import 'package:pdify/widgets/mesh_background_scaffold.dart';
@@ -98,6 +100,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final theme = Theme.of(context);
+    final themeProvider = context.watch<ThemeProvider>();
 
     return MeshBackgroundScaffold(
       title: 'Profile',
@@ -164,7 +167,51 @@ class ProfileScreen extends StatelessWidget {
                                 ?.withValues(alpha: 0.7),
                           ),
                         ),
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 32),
+                        // Theme Toggle
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.08,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    themeProvider.isDarkMode
+                                        ? Icons.dark_mode_rounded
+                                        : Icons.light_mode_rounded,
+                                    color: theme.colorScheme.primary,
+                                    size: 22,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    themeProvider.isDarkMode
+                                        ? 'Dark Mode'
+                                        : 'Light Mode',
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Switch(
+                                value: themeProvider.isDarkMode,
+                                onChanged: (_) => themeProvider.toggleTheme(),
+                                activeColor: theme.colorScheme.primary,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 32),
                         // Sign Out Button
                         SizedBox(
                           width: double.infinity,

@@ -6,7 +6,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:provider/provider.dart';
 import 'package:pdify/ad_service.dart';
+import 'package:pdify/providers/search_filter_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pdify/widgets/glass_card.dart';
 import 'package:pdify/widgets/primary_button.dart';
@@ -22,6 +24,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final User? user = FirebaseAuth.instance.currentUser;
+  final TextEditingController _searchController = TextEditingController();
   bool _isUploading = false;
   bool _isDeleting = false;
 
@@ -29,6 +32,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _checkForUpdate();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkForUpdate() async {
@@ -232,6 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Column(
             children: [
               _buildUploadSection(theme),
+              _buildSearchBar(theme),
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
@@ -293,12 +303,50 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     }
 
-                    var docs = snapshot.data!.docs;
+                    final provider = context.watch<SearchFilterProvider>();
+                    final filteredDocs = provider.filterAndSort(
+                      snapshot.data!.docs,
+                    );
+
+                    if (filteredDocs.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off_rounded,
+                              size: 64,
+                              color: theme.colorScheme.primary.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              "No results found",
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: theme.textTheme.bodyMedium?.color
+                                    ?.withValues(alpha: 0.7),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Try a different search term",
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.textTheme.bodyMedium?.color
+                                    ?.withValues(alpha: 0.5),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
                     return ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 140),
-                      itemCount: docs.length,
+                      itemCount: filteredDocs.length,
                       itemBuilder: (context, index) {
-                        var doc = docs[index];
+                        var doc = filteredDocs[index];
                         var data = doc.data() as Map<String, dynamic>;
                         return _buildPdfItem(doc.id, data, theme);
                       },
@@ -315,6 +363,72 @@ class _HomeScreenState extends State<HomeScreen> {
             child: BannerAdWidget(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(ThemeData theme) {
+    final provider = context.watch<SearchFilterProvider>();
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark
+              ? const Color(0xFF1E293B).withValues(alpha: 0.7)
+              : Colors.white.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.grey.withValues(alpha: 0.2),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: TextField(
+          controller: _searchController,
+          onChanged: provider.updateSearch,
+          style: theme.textTheme.bodyMedium,
+          decoration: InputDecoration(
+            hintText: 'Search PDFs...',
+            hintStyle: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
+            ),
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              color: theme.colorScheme.primary.withValues(alpha: 0.6),
+              size: 20,
+            ),
+            suffixIcon: provider.searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: theme.textTheme.bodyMedium?.color?.withValues(
+                        alpha: 0.5,
+                      ),
+                    ),
+                    onPressed: () {
+                      _searchController.clear();
+                      provider.clearSearch();
+                      FocusScope.of(context).unfocus();
+                    },
+                  )
+                : null,
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -462,7 +576,7 @@ class _HomeScreenState extends State<HomeScreen> {
             fileName,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
-              color: Colors.white,
+              color: theme.textTheme.bodyLarge?.color,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -478,7 +592,12 @@ class _HomeScreenState extends State<HomeScreen> {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.expand_more_rounded, color: Colors.white54),
+              Icon(
+                Icons.expand_more_rounded,
+                color: theme.textTheme.bodyMedium?.color?.withValues(
+                  alpha: 0.5,
+                ),
+              ),
               IconButton(
                 icon: const Icon(
                   Icons.delete_outline_rounded,

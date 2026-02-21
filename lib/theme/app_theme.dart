@@ -30,7 +30,9 @@ class AppTheme {
           fontWeight: FontWeight.w800,
         ),
       ),
-      textTheme: GoogleFonts.interTextTheme(base.textTheme),
+      textTheme: GoogleFonts.interTextTheme(
+        base.textTheme,
+      ).apply(bodyColor: Colors.black87, displayColor: Colors.black87),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: _primaryColor,

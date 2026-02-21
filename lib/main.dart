@@ -4,6 +4,7 @@ import 'package:pdify/theme/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:pdify/ad_service.dart';
 import 'package:pdify/firebase_options.dart';
 import 'package:pdify/convert_screen.dart';
@@ -11,11 +12,12 @@ import 'package:pdify/home_screen.dart';
 import 'package:pdify/login_screen.dart';
 import 'package:pdify/profile_screen.dart';
 import 'package:pdify/splash_screen.dart';
+import 'package:pdify/providers/search_filter_provider.dart';
+import 'package:pdify/providers/theme_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  // Initialize AdMob in the background (don't block app startup)
   AdService().initialize();
   runApp(const MyApp());
 }
@@ -25,14 +27,23 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Pdify',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.dark,
-
-      home: const SplashScreen(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => SearchFilterProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()..loadTheme()),
+      ],
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          return MaterialApp(
+            title: 'Pdify',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.themeMode,
+            home: const SplashScreen(),
+          );
+        },
+      ),
     );
   }
 }

@@ -407,11 +407,17 @@ class _ConvertScreenState extends State<ConvertScreen> {
                 children: [
                   Text(
                     'Part 1: Pages 1–$selectedPage',
-                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).textTheme.bodySmall?.color,
+                    ),
                   ),
                   Text(
                     'Part 2: Pages ${selectedPage + 1}–$totalPages',
-                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).textTheme.bodySmall?.color,
+                    ),
                   ),
                 ],
               ),
