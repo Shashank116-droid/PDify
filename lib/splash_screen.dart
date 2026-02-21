@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pdify/main.dart'; // Import for AuthWrapper
+import 'package:pdify/widgets/glass_card.dart';
+import 'package:pdify/widgets/mesh_background_scaffold.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -44,8 +46,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
+    final theme = Theme.of(context);
+    return MeshBackgroundScaffold(
       body: Center(
         child: FadeTransition(
           opacity: _fadeAnimation,
@@ -54,39 +56,38 @@ class _SplashScreenState extends State<SplashScreen>
             children: [
               Text(
                 "Your AI Summarizer",
-                style: TextStyle(
-                  fontSize: 24,
+                style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF7C3AED), // Purple theme color
+                  color: Colors.white,
                   letterSpacing: 0.5,
                 ),
               ),
               const SizedBox(height: 32),
-              Container(
+              GlassCard(
+                borderRadius: 24,
                 width: 150,
                 height: 150,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF7C3AED).withValues(alpha: 0.2),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
+                padding: EdgeInsets.zero, // Remove default padding if needed
+                child: Container(
+                  width: 150,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    // Shadow is handled by GlassCard, but we can add more if needed
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(
+                          Icons.auto_stories_rounded,
+                          size: 80,
+                          color: theme.colorScheme.primary,
+                        );
+                      },
                     ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.auto_stories_rounded,
-                        size: 80,
-                        color: Color(0xFF7C3AED),
-                      );
-                    },
                   ),
                 ),
               ),

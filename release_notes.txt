@@ -1,12 +1,25 @@
-Initial Release of PDify (v1.0.0)
+What's New in Version 1.0.3:
 
-🚀 What's New:
-*   **AI PDF Summarizer:** Summarize long documents instantly.
-*   **Chat with PDF:** Ask questions about your file content.
-*   **Smart Exam Mode:** Generate practice questions and key terminology.
-*   **Image to PDF:** Convert photos to searchable PDF documents.
-*   **Profile Management:** Login securely via Google or Email.
-*   **Privacy First:** Account deletion and data management included.
-*   **In-App Updates:** Stay up to date automatically.
+📚 Exam Mode Upgrade
+- Interactive Practice Questions with tap-to-reveal answers.
+- Question count adapts to PDF length for smarter study sessions.
+- Exam summary now features Key Definitions, Core Concepts & Quick Review Points.
 
-Thank you for testing PDify! Your feedback helps us improve.
+🗑️ PDF Management
+- Delete individual PDFs with the new trash icon on each card.
+- Delete All option in the top bar to clear everything at once.
+- Deletes are synced — removes summaries from the cloud too.
+
+📤 Improved Sharing
+- Full summaries now shared without truncation via file attachment.
+- Works reliably across all sharing apps.
+
+⚡ Faster App Launch
+- App loads significantly faster with optimized startup.
+- Reduced splash screen wait time.
+
+🎨 Visual Tweaks
+- Updated app icon.
+- Refined text colors for better readability across screens.
+
+Enjoying Pdify? Rate us 5 stars! 🌟
