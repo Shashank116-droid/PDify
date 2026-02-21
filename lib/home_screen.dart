@@ -9,6 +9,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import 'package:pdify/ad_service.dart';
 import 'package:pdify/providers/search_filter_provider.dart';
+import 'package:pdify/providers/bookmark_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pdify/widgets/glass_card.dart';
 import 'package:pdify/widgets/primary_button.dart';
@@ -304,8 +305,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
 
                     final provider = context.watch<SearchFilterProvider>();
+                    final bookmarkProvider = context.watch<BookmarkProvider>();
                     final filteredDocs = provider.filterAndSort(
                       snapshot.data!.docs,
+                      bookmarkProvider.bookmarkedIds,
                     );
 
                     if (filteredDocs.isEmpty) {
@@ -342,14 +345,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     }
 
-                    return ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 140),
-                      itemCount: filteredDocs.length,
-                      itemBuilder: (context, index) {
-                        var doc = filteredDocs[index];
-                        var data = doc.data() as Map<String, dynamic>;
-                        return _buildPdfItem(doc.id, data, theme);
+                    return RefreshIndicator(
+                      color: const Color(0xFF7C3AED),
+                      onRefresh: () async {
+                        await Future.delayed(const Duration(milliseconds: 500));
                       },
+                      child: ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 140),
+                        itemCount: filteredDocs.length,
+                        itemBuilder: (context, index) {
+                          var doc = filteredDocs[index];
+                          var data = doc.data() as Map<String, dynamic>;
+                          return _buildPdfItem(doc.id, data, theme);
+                        },
+                      ),
                     );
                   },
                 ),
@@ -392,42 +402,70 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        child: TextField(
-          controller: _searchController,
-          onChanged: provider.updateSearch,
-          style: theme.textTheme.bodyMedium,
-          decoration: InputDecoration(
-            hintText: 'Search PDFs...',
-            hintStyle: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
-            ),
-            prefixIcon: Icon(
-              Icons.search_rounded,
-              color: theme.colorScheme.primary.withValues(alpha: 0.6),
-              size: 20,
-            ),
-            suffixIcon: provider.searchQuery.isNotEmpty
-                ? IconButton(
-                    icon: Icon(
-                      Icons.close_rounded,
-                      size: 18,
-                      color: theme.textTheme.bodyMedium?.color?.withValues(
-                        alpha: 0.5,
-                      ),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                onChanged: provider.updateSearch,
+                style: theme.textTheme.bodyMedium,
+                decoration: InputDecoration(
+                  hintText: 'Search PDFs...',
+                  hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.textTheme.bodyMedium?.color?.withValues(
+                      alpha: 0.4,
                     ),
-                    onPressed: () {
-                      _searchController.clear();
-                      provider.clearSearch();
-                      FocusScope.of(context).unfocus();
-                    },
-                  )
-                : null,
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.6),
+                    size: 20,
+                  ),
+                  suffixIcon: provider.searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(
+                            Icons.close_rounded,
+                            size: 18,
+                            color: theme.textTheme.bodyMedium?.color
+                                ?.withValues(alpha: 0.5),
+                          ),
+                          onPressed: () {
+                            _searchController.clear();
+                            provider.clearSearch();
+                            FocusScope.of(context).unfocus();
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                ),
+              ),
             ),
-          ),
+            Container(
+              height: 32,
+              width: 1,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : Colors.grey.withValues(alpha: 0.2),
+            ),
+            IconButton(
+              icon: Icon(
+                provider.filterOnlyBookmarked
+                    ? Icons.bookmark_rounded
+                    : Icons.bookmark_outline_rounded,
+                size: 20,
+                color: provider.filterOnlyBookmarked
+                    ? const Color(0xFFFFD166)
+                    : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
+              ),
+              onPressed: provider.toggleBookmarkFilter,
+              tooltip: 'Show Bookmarked Only',
+            ),
+            const SizedBox(width: 4),
+          ],
         ),
       ),
     );
@@ -556,6 +594,92 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _renamePdf(String docId, String currentName) async {
+    final controller = TextEditingController(text: currentName);
+    final theme = Theme.of(context);
+
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rename PDF'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: TextStyle(color: theme.textTheme.bodyLarge?.color),
+          decoration: const InputDecoration(hintText: 'Enter new name'),
+          onSubmitted: (value) => Navigator.pop(context, value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Rename'),
+          ),
+        ],
+      ),
+    );
+
+    if (newName == null || newName.isEmpty || newName == currentName) return;
+
+    try {
+      await FirebaseFirestore.instance.collection('pdfs').doc(docId).update({
+        'fileName': newName,
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PDF renamed successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Rename failed: $e')));
+      }
+    }
+  }
+
+  Future<void> _retryPdf(String docId, Map<String, dynamic> data) async {
+    try {
+      // Delete any partial summaries
+      final summaries = await FirebaseFirestore.instance
+          .collection('summaries')
+          .where('pdfId', isEqualTo: docId)
+          .get();
+      for (final doc in summaries.docs) {
+        await doc.reference.delete();
+      }
+
+      // Delete the failed doc
+      await FirebaseFirestore.instance.collection('pdfs').doc(docId).delete();
+
+      // Re-create to trigger onDocumentCreated
+      await FirebaseFirestore.instance.collection('pdfs').add({
+        'userId': data['userId'],
+        'fileUrl': data['fileUrl'],
+        'storagePath': data['storagePath'],
+        'fileName': data['fileName'],
+        'status': 'processing',
+        'uploadedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Retrying summary generation...')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Retry failed: $e')));
+      }
+    }
+  }
+
   Widget _buildPdfItem(
     String docId,
     Map<String, dynamic> data,
@@ -563,6 +687,8 @@ class _HomeScreenState extends State<HomeScreen> {
   ) {
     String status = data['status'] ?? 'unknown';
     String fileName = data['fileName'] ?? 'Unknown File';
+    final bookmarkProvider = context.watch<BookmarkProvider>();
+    final isBookmarked = bookmarkProvider.isBookmarked(docId);
 
     return GlassCard(
       margin: const EdgeInsets.only(bottom: 16),
@@ -572,14 +698,29 @@ class _HomeScreenState extends State<HomeScreen> {
         data: theme.copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          title: Text(
-            fileName,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: theme.textTheme.bodyLarge?.color,
+          title: GestureDetector(
+            onTap: () => _renamePdf(docId, fileName),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.edit_rounded,
+                  size: 14,
+                  color: theme.colorScheme.primary.withValues(alpha: 0.5),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    fileName,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.textTheme.bodyLarge?.color,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -597,6 +738,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: theme.textTheme.bodyMedium?.color?.withValues(
                   alpha: 0.5,
                 ),
+              ),
+              IconButton(
+                icon: Icon(
+                  isBookmarked
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
+                  color: isBookmarked
+                      ? const Color(0xFFFFD166)
+                      : theme.textTheme.bodyMedium?.color?.withValues(
+                          alpha: 0.4,
+                        ),
+                  size: 22,
+                ),
+                tooltip: isBookmarked ? 'Remove bookmark' : 'Bookmark',
+                onPressed: () => bookmarkProvider.toggleBookmark(docId),
               ),
               IconButton(
                 icon: const Icon(
@@ -631,7 +787,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Text(
                         "Summarizing...",
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.white,
+                          color: theme.textTheme.bodyMedium?.color,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -648,11 +804,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: Text(
-                        "Failed.",
+                        "Summary failed",
                         style: TextStyle(
                           color: theme.colorScheme.error,
                           fontWeight: FontWeight.w600,
                         ),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _retryPdf(docId, data),
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      label: const Text("Retry"),
+                      style: TextButton.styleFrom(
+                        foregroundColor: theme.colorScheme.primary,
                       ),
                     ),
                   ],

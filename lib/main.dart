@@ -14,6 +14,7 @@ import 'package:pdify/profile_screen.dart';
 import 'package:pdify/splash_screen.dart';
 import 'package:pdify/providers/search_filter_provider.dart';
 import 'package:pdify/providers/theme_provider.dart';
+import 'package:pdify/providers/bookmark_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +32,9 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => SearchFilterProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()..loadTheme()),
+        ChangeNotifierProvider(
+          create: (_) => BookmarkProvider()..loadBookmarks(),
+        ),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

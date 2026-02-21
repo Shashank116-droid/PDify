@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 class SearchFilterProvider extends ChangeNotifier {
   String _searchQuery = '';
   bool _sortNewestFirst = true;
+  bool _filterOnlyBookmarked = false;
 
   String get searchQuery => _searchQuery;
   bool get sortNewestFirst => _sortNewestFirst;
+  bool get filterOnlyBookmarked => _filterOnlyBookmarked;
 
   void updateSearch(String query) {
     _searchQuery = query;
@@ -24,9 +26,18 @@ class SearchFilterProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void toggleBookmarkFilter() {
+    _filterOnlyBookmarked = !_filterOnlyBookmarked;
+    notifyListeners();
+  }
+
   /// Filters docs by fileName matching the search query,
+  /// then applies bookmark filter if active,
   /// then sorts by upload date based on the current sort direction.
-  List<QueryDocumentSnapshot> filterAndSort(List<QueryDocumentSnapshot> docs) {
+  List<QueryDocumentSnapshot> filterAndSort(
+    List<QueryDocumentSnapshot> docs,
+    Set<String> bookmarkedIds,
+  ) {
     var filtered = docs;
 
     // Filter by search query
@@ -37,6 +48,13 @@ class SearchFilterProvider extends ChangeNotifier {
         final fileName = (data['fileName'] ?? '').toString().toLowerCase();
         return fileName.contains(query);
       }).toList();
+    }
+
+    // Filter by bookmarks
+    if (_filterOnlyBookmarked) {
+      filtered = filtered
+          .where((doc) => bookmarkedIds.contains(doc.id))
+          .toList();
     }
 
     // The Firestore query already sorts newest-first.
