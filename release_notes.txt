@@ -1,25 +1,28 @@
-What's New in Version 1.0.3:
+What's New in Version 1.1.0:
 
-📚 Exam Mode Upgrade
-- Interactive Practice Questions with tap-to-reveal answers.
-- Question count adapts to PDF length for smarter study sessions.
-- Exam summary now features Key Definitions, Core Concepts & Quick Review Points.
+💬 Chat with AI (New!)
+- Have interactive conversations with your PDFs.
+- Ask specific questions, get summaries, or extract data.
+- Interactive prompt chips to get you started instantly.
+- Formatting support (Markdown) for clear AI responses.
 
-🗑️ PDF Management
-- Delete individual PDFs with the new trash icon on each card.
-- Delete All option in the top bar to clear everything at once.
-- Deletes are synced — removes summaries from the cloud too.
+🔍 Search & Filter
+- Find any PDF instantly with the new Search Bar.
+- Bookmark your favorite summaries for quick access.
+- Filter to see only bookmarked items with one tap.
 
-📤 Improved Sharing
-- Full summaries now shared without truncation via file attachment.
-- Works reliably across all sharing apps.
+🌙 Complete Theme Support
+- Full Light and Dark Mode support throughout the app.
+- Consistent branding with the new PDify Purple theme.
 
-⚡ Faster App Launch
-- App loads significantly faster with optimized startup.
-- Reduced splash screen wait time.
+🛠️ Better PDF Management
+- Rename your PDFs directly from the list.
+- Pull-to-refresh to update your summary history.
+- Smart 'Retry' button to re-attempt failed summaries.
 
-🎨 Visual Tweaks
-- Updated app icon.
-- Refined text colors for better readability across screens.
+✨ Polished Experience
+- Auto-focus chat input for faster questioning.
+- Copy AI responses to clipboard with one tap.
+- Optimized splash and login screens for better accessibility.
 
-Enjoying Pdify? Rate us 5 stars! 🌟
+Enjoying PDify? Rate us 5 stars! 🌟

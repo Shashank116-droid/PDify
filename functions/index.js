@@ -1,4 +1,5 @@
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const pdf = require("pdf-parse");
@@ -442,5 +443,119 @@ ${text.substring(0, 25000)}`;
     } catch (error) {
         console.error("Error processing PDF:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
         await snap.ref.update({ status: "error" });
+    }
+});
+
+/**
+ * Callable function to chat with a PDF.
+ * Expects data: { pdfId: string, message: string, history: Array<{role: 'user'|'model', parts: [{text: string}]}> }
+ */
+exports.chatWithPdf = onCall(async (request) => {
+    try {
+        const { pdfId, message, history } = request.data;
+
+        if (!request.auth) {
+            throw new HttpsError('unauthenticated', 'User must be logged in.');
+        }
+
+        if (!pdfId || !message) {
+            throw new HttpsError('invalid-argument', 'Missing pdfId or message.');
+        }
+
+        // 1. Fetch PDF metadata to get storage path
+        const pdfDoc = await admin.firestore().collection("pdfs").doc(pdfId).get();
+        if (!pdfDoc.exists) {
+            throw new HttpsError('not-found', 'PDF document not found.');
+        }
+
+        const data = pdfDoc.data();
+        // Ensure user owns this PDF
+        if (data.userId !== request.auth.uid) {
+            throw new HttpsError('permission-denied', 'You do not own this PDF.');
+        }
+
+        const storagePath = data.storagePath;
+        if (!storagePath) {
+            throw new HttpsError('failed-precondition', 'PDF has no storage path.');
+        }
+
+        // 2. Download and parse PDF
+        const bucket = admin.storage().bucket();
+        const file = bucket.file(storagePath);
+        const [buffer] = await file.download();
+        const pdfData = await pdf(buffer);
+        let text = pdfData.text;
+
+        if (text.trim().length < OCR_TEXT_THRESHOLD) {
+            text = await performOcr(bucket.name, storagePath);
+        }
+
+        // 3. Prepare Gemini API Request
+        const apiKey = process.env.AI_API_KEY;
+        if (!apiKey) {
+            throw new HttpsError('internal', "AI API Key not configured.");
+        }
+
+        const modelName = "gemini-2.5-flash";
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+        // Build System Instruction with context
+        const systemInstruction = `You are a helpful AI assistant inside the 'Pdify' app. 
+You are chatting with a student who uploaded a PDF document.
+Answer their questions based ONLY on the following extracted document text.
+If the answer is not in the text, politely say that you cannot find the answer in the provided document. Do not hallucinate outside information.
+
+DOCUMENT CONTENT:
+${text.substring(0, 30000)} // Truncated to avoid token limits
+`;
+
+        // Format history for Gemini
+        // Gemini expects: { contents: [ {role: "user", parts: [{text: "..."}]}, {role: "model", parts: [{text: "..."}]} ], systemInstruction: {...} }
+        const formattedHistory = history ? history.map(msg => ({
+            role: msg.role,
+            parts: [{ text: msg.text }]
+        })) : [];
+
+        // Append current message
+        formattedHistory.push({
+            role: "user",
+            parts: [{ text: message }]
+        });
+
+        const payload = {
+            systemInstruction: {
+                parts: [{ text: systemInstruction }]
+            },
+            contents: formattedHistory
+        };
+
+        // 4. Call Gemini API
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const errorBody = await response.text();
+            console.error("Gemini Chat API Error:", response.status, errorBody);
+            throw new HttpsError('internal', `Failed to generate response: ${response.status}`);
+        }
+
+        const json = await response.json();
+        const replyText = json.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!replyText) {
+            throw new HttpsError('internal', "Received empty response from AI.");
+        }
+
+        return { reply: replyText };
+
+    } catch (error) {
+        console.error("Error in chatWithPdf:", error);
+        if (error instanceof HttpsError) {
+            throw error;
+        }
+        throw new HttpsError('internal', error.message || 'An unknown error occurred.');
     }
 });

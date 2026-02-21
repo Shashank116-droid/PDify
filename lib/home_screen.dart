@@ -5,11 +5,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import 'package:pdify/ad_service.dart';
 import 'package:pdify/providers/search_filter_provider.dart';
 import 'package:pdify/providers/bookmark_provider.dart';
+import 'package:pdify/chat_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pdify/widgets/glass_card.dart';
 import 'package:pdify/widgets/primary_button.dart';
@@ -220,7 +222,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // static const color4 = Color(0xFFFFD166); // Warm Yellow
 
     return MeshBackgroundScaffold(
-      title: 'Pdify',
+      title: 'PDify',
       actions: [
         IconButton(
           icon: _isDeleting
@@ -698,29 +700,32 @@ class _HomeScreenState extends State<HomeScreen> {
         data: theme.copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          title: GestureDetector(
-            onTap: () => _renamePdf(docId, fileName),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.edit_rounded,
-                  size: 14,
-                  color: theme.colorScheme.primary.withValues(alpha: 0.5),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    fileName,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: theme.textTheme.bodyLarge?.color,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+          title: Row(
+            children: [
+              GestureDetector(
+                onTap: () => _renamePdf(docId, fileName),
+                child: Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: Icon(
+                    Icons.edit_rounded,
+                    size: 16,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.7),
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  fileName,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: theme.textTheme.bodyLarge?.color,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -986,6 +991,9 @@ class SummaryView extends StatelessWidget {
           _buildSummaryContent(
             fullSummary?['content'] ?? "Generating...",
             theme,
+            context,
+            pdfId,
+            "Document", // We don't have fileName in SummaryView easily without another fetch, so default
           ),
         ];
 
@@ -995,6 +1003,9 @@ class SummaryView extends StatelessWidget {
             examSummary?['content'] ??
                 "Exam summary is not available for this document.\n\nTry uploading the PDF again if this persists.",
             theme,
+            context,
+            pdfId,
+            "Document", // Default fileName
             isExam: true,
             questions: (examSummary?['questions'] as List<dynamic>?)
                 ?.cast<Map<String, dynamic>>(),
@@ -1024,7 +1035,10 @@ class SummaryView extends StatelessWidget {
 
   Widget _buildSummaryContent(
     String content,
-    ThemeData theme, {
+    ThemeData theme,
+    BuildContext context,
+    String pdfId,
+    String fileName, {
     bool isExam = false,
     List<Map<String, dynamic>>? questions,
   }) {
@@ -1179,6 +1193,34 @@ class SummaryView extends StatelessWidget {
               );
             }),
           ],
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        ChatScreen(pdfId: pdfId, fileName: fileName),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20),
+              label: const Text(
+                'Chat with AI about this PDF',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF7C3AED),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1351,6 +1393,8 @@ class _RewardedSummaryGateState extends State<_RewardedSummaryGate> {
       return SummaryView(pdfId: widget.pdfId);
     }
 
+    final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -1372,13 +1416,13 @@ class _RewardedSummaryGateState extends State<_RewardedSummaryGate> {
                   color: Color(0xFF7C3AED),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'Watch a short ad to view this summary',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: theme.textTheme.bodyLarge?.color,
                   ),
                 ),
                 const SizedBox(height: 16),

@@ -58,7 +58,7 @@ class _SplashScreenState extends State<SplashScreen>
                 "Your AI Summarizer",
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  color: const Color(0xFF7C3AED),
                   letterSpacing: 0.5,
                 ),
               ),

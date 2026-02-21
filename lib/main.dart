@@ -15,6 +15,7 @@ import 'package:pdify/splash_screen.dart';
 import 'package:pdify/providers/search_filter_provider.dart';
 import 'package:pdify/providers/theme_provider.dart';
 import 'package:pdify/providers/bookmark_provider.dart';
+import 'package:pdify/providers/chat_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +36,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => BookmarkProvider()..loadBookmarks(),
         ),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

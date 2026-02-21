@@ -157,10 +157,10 @@ class _LoginScreenState extends State<LoginScreen>
 
               // App Title
               Text(
-                "Pdify",
+                "PDify",
                 textAlign: TextAlign.center,
                 style: theme.textTheme.displaySmall?.copyWith(
-                  color: Colors.white, // White
+                  color: color1, // Vivid Purple
                   fontWeight: FontWeight.w900,
                   letterSpacing: -1,
                 ),
@@ -203,12 +203,11 @@ class _LoginScreenState extends State<LoginScreen>
 
                     // Form Fields
                     TextField(
-                      style: TextStyle(
-                        color: Theme.of(context).textTheme.bodyLarge?.color,
-                      ),
+                      style: const TextStyle(color: Colors.black),
                       controller: _emailController,
                       decoration: InputDecoration(
                         labelText: "Email",
+                        labelStyle: const TextStyle(color: Colors.black54),
                         prefixIcon: const Icon(
                           Icons.email_outlined,
                           color: color1,
@@ -234,13 +233,12 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                     const SizedBox(height: 16),
                     TextField(
-                      style: TextStyle(
-                        color: Theme.of(context).textTheme.bodyLarge?.color,
-                      ),
+                      style: const TextStyle(color: Colors.black),
                       controller: _passwordController,
                       obscureText: !_isPasswordVisible,
                       decoration: InputDecoration(
                         labelText: "Password",
+                        labelStyle: const TextStyle(color: Colors.black54),
                         prefixIcon: const Icon(
                           Icons.lock_outline,
                           color: color1,
@@ -357,9 +355,7 @@ class _LoginScreenState extends State<LoginScreen>
                             Text(
                               "Continue with Google",
                               style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).textTheme.bodyLarge?.color,
+                                color: Colors.black,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -422,7 +418,12 @@ class _LoginScreenState extends State<LoginScreen>
                         },
                         child: RichText(
                           text: TextSpan(
-                            style: const TextStyle(color: Colors.white70),
+                            style: TextStyle(
+                              color:
+                                  (theme.textTheme.bodyMedium?.color ??
+                                          Colors.white)
+                                      .withValues(alpha: 0.7),
+                            ),
                             children: [
                               TextSpan(
                                 text: _isLogin
