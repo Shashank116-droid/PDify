@@ -4,6 +4,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import 'package:pdify/providers/chat_provider.dart';
 import 'package:pdify/services/voice_service.dart';
+import 'package:pdify/services/export_service.dart';
 import 'package:pdify/widgets/mesh_background_scaffold.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -87,6 +88,23 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                       ],
                     ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.picture_as_pdf_rounded,
+                      color: theme.colorScheme.primary.withValues(alpha: 0.8),
+                    ),
+                    onPressed: () {
+                      final messages = context.read<ChatProvider>().getMessages(
+                        widget.pdfId,
+                      );
+                      ExportService.exportChatToPdf(
+                        context: context,
+                        fileName: widget.fileName,
+                        messages: messages,
+                      );
+                    },
+                    tooltip: 'Export Chat',
                   ),
                   IconButton(
                     icon: Icon(

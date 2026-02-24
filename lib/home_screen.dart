@@ -12,10 +12,12 @@ import 'package:pdify/ad_service.dart';
 import 'package:pdify/providers/search_filter_provider.dart';
 import 'package:pdify/providers/bookmark_provider.dart';
 import 'package:pdify/chat_screen.dart';
+import 'package:pdify/providers/folder_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pdify/widgets/glass_card.dart';
 import 'package:pdify/widgets/primary_button.dart';
 import 'package:pdify/widgets/mesh_background_scaffold.dart';
+import 'package:pdify/services/export_service.dart';
 import 'package:in_app_update/in_app_update.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -245,6 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildUploadSection(theme),
               _buildSearchBar(theme),
+              _buildFolderChips(theme),
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
@@ -308,9 +311,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     final provider = context.watch<SearchFilterProvider>();
                     final bookmarkProvider = context.watch<BookmarkProvider>();
+                    final folderProvider = context.watch<FolderProvider>();
+
+                    // Build summary content map for deep search
+                    final Map<String, String> summaryContents = {};
+                    // We will populate this lazily from the summary stream
+
                     final filteredDocs = provider.filterAndSort(
                       snapshot.data!.docs,
                       bookmarkProvider.bookmarkedIds,
+                      folderAssignments: folderProvider.assignments,
+                      summaryContents: summaryContents,
                     );
 
                     if (filteredDocs.isEmpty) {
@@ -468,6 +479,255 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(width: 4),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFolderChips(ThemeData theme) {
+    final provider = context.watch<SearchFilterProvider>();
+    final folderProvider = context.watch<FolderProvider>();
+    final isDark = theme.brightness == Brightness.dark;
+
+    if (folderProvider.folderNames.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      child: SizedBox(
+        height: 36,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          children: [
+            // "All" chip
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: const Text('All'),
+                selected: provider.selectedFolder == null,
+                onSelected: (_) => provider.selectFolder(null),
+                selectedColor: const Color(0xFF7C3AED),
+                labelStyle: TextStyle(
+                  color: provider.selectedFolder == null
+                      ? Colors.white
+                      : (isDark ? Colors.white70 : Colors.black87),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+                backgroundColor: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.05),
+                side: BorderSide.none,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+            // Folder chips
+            ...folderProvider.folderNames.map((name) {
+              final isSelected = provider.selectedFolder == name;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GestureDetector(
+                  onLongPress: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Delete Folder'),
+                        content: Text(
+                          'Delete folder "$name"? PDFs will be unassigned.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              folderProvider.deleteFolder(name);
+                              if (provider.selectedFolder == name) {
+                                provider.selectFolder(null);
+                              }
+                              Navigator.pop(ctx);
+                            },
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.red,
+                            ),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  child: ChoiceChip(
+                    avatar: Icon(
+                      Icons.folder_rounded,
+                      size: 14,
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF7C3AED),
+                    ),
+                    label: Text(name),
+                    selected: isSelected,
+                    onSelected: (_) =>
+                        provider.selectFolder(isSelected ? null : name),
+                    selectedColor: const Color(0xFF7C3AED),
+                    labelStyle: TextStyle(
+                      color: isSelected
+                          ? Colors.white
+                          : (isDark ? Colors.white70 : Colors.black87),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                    backgroundColor: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.05),
+                    side: BorderSide.none,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showFolderPicker(
+    String docId,
+    FolderProvider folderProvider,
+    ThemeData theme,
+  ) async {
+    final currentFolder = folderProvider.getFolder(docId);
+    final newFolderController = TextEditingController();
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.folder_rounded, color: Color(0xFF7C3AED)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Move to Folder',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Existing folders
+              if (folderProvider.folderNames.isNotEmpty)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    // Remove from folder option
+                    if (currentFolder != null)
+                      ActionChip(
+                        avatar: const Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: Colors.redAccent,
+                        ),
+                        label: const Text('Remove'),
+                        onPressed: () {
+                          folderProvider.removeFromFolder(docId);
+                          Navigator.pop(ctx);
+                        },
+                      ),
+                    ...folderProvider.folderNames.map((name) {
+                      final isActive = currentFolder == name;
+                      return ChoiceChip(
+                        label: Text(name),
+                        selected: isActive,
+                        selectedColor: const Color(0xFF7C3AED),
+                        labelStyle: TextStyle(
+                          color: isActive ? Colors.white : null,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        onSelected: (_) {
+                          folderProvider.assignFolder(docId, name);
+                          Navigator.pop(ctx);
+                        },
+                      );
+                    }),
+                  ],
+                ),
+              const SizedBox(height: 16),
+              // Create new folder
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: newFolderController,
+                      style: theme.textTheme.bodyMedium,
+                      decoration: InputDecoration(
+                        hintText: 'New folder name...',
+                        hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.textTheme.bodyMedium?.color?.withValues(
+                            alpha: 0.5,
+                          ),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: const Color(
+                              0xFF7C3AED,
+                            ).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                      onSubmitted: (value) {
+                        if (value.trim().isNotEmpty) {
+                          folderProvider.assignFolder(docId, value.trim());
+                          Navigator.pop(ctx);
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () {
+                      final name = newFolderController.text.trim();
+                      if (name.isNotEmpty) {
+                        folderProvider.assignFolder(docId, name);
+                        Navigator.pop(ctx);
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF7C3AED),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Add',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
@@ -691,6 +951,8 @@ class _HomeScreenState extends State<HomeScreen> {
     String fileName = data['fileName'] ?? 'Unknown File';
     final bookmarkProvider = context.watch<BookmarkProvider>();
     final isBookmarked = bookmarkProvider.isBookmarked(docId);
+    final folderProvider = context.watch<FolderProvider>();
+    final assignedFolder = folderProvider.getFolder(docId);
 
     return GlassCard(
       margin: const EdgeInsets.only(bottom: 16),
@@ -729,9 +991,42 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _buildStatusChip(status, theme),
+            child: Row(
+              children: [
+                _buildStatusChip(status, theme),
+                if (assignedFolder != null) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.folder_rounded,
+                          size: 12,
+                          color: Color(0xFF7C3AED),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          assignedFolder,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF7C3AED),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           leading: _buildStatusIcon(status, theme),
@@ -743,6 +1038,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: theme.textTheme.bodyMedium?.color?.withValues(
                   alpha: 0.5,
                 ),
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.folder_open_rounded,
+                  color: assignedFolder != null
+                      ? const Color(0xFF7C3AED)
+                      : theme.textTheme.bodyMedium?.color?.withValues(
+                          alpha: 0.4,
+                        ),
+                  size: 22,
+                ),
+                tooltip: 'Move to folder',
+                onPressed: () =>
+                    _showFolderPicker(docId, folderProvider, theme),
               ),
               IconButton(
                 icon: Icon(
@@ -1064,6 +1373,23 @@ class SummaryView extends StatelessWidget {
                 ),
               ),
               const Spacer(),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(
+                  Icons.picture_as_pdf_rounded,
+                  size: 20,
+                  color: Color(0xFF7C3AED),
+                ),
+                onPressed: () {
+                  ExportService.exportSummaryToPdf(
+                    context: context,
+                    fileName: fileName,
+                    summaryContent: content,
+                    summaryType: isExam ? 'Exam Prep' : 'AI Summary',
+                  );
+                },
+                tooltip: 'Export as PDF',
+              ),
               IconButton(
                 visualDensity: VisualDensity.compact,
                 icon: const Icon(
