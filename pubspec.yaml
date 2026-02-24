@@ -53,6 +53,8 @@ dependencies:
   provider: ^6.1.2
   shared_preferences: ^2.2.2
   cloud_functions: ^6.0.6
+  speech_to_text: ^7.0.0
+  flutter_tts: ^4.2.0
 
 dev_dependencies:
   flutter_test:

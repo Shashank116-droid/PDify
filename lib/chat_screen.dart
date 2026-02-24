@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import 'package:pdify/providers/chat_provider.dart';
+import 'package:pdify/services/voice_service.dart';
 import 'package:pdify/widgets/mesh_background_scaffold.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -190,61 +191,143 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.05)
-                            : Colors.black.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: TextField(
-                        controller: _controller,
-                        autofocus: true,
-                        style: theme.textTheme.bodyMedium,
-                        decoration: InputDecoration(
-                          hintText: "Ask about this PDF...",
-                          hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.textTheme.bodyMedium?.color
-                                ?.withValues(alpha: 0.5),
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 14,
+              child: Consumer<VoiceService>(
+                builder: (context, voiceService, _) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Listening indicator
+                      if (voiceService.isListening)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: theme.colorScheme.error,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  voiceService.lastRecognizedWords.isEmpty
+                                      ? 'Listening...'
+                                      : voiceService.lastRecognizedWords,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontStyle: FontStyle.italic,
+                                    color: theme.colorScheme.error,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        onSubmitted: (_) => _sendMessage(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Consumer<ChatProvider>(
-                    builder: (context, chatProvider, child) {
-                      final isLoading = chatProvider.isLoading(widget.pdfId);
-                      return Material(
-                        color: isLoading
-                            ? theme.colorScheme.primary.withValues(alpha: 0.5)
-                            : theme.colorScheme.primary,
-                        shape: const CircleBorder(),
-                        child: InkWell(
-                          onTap: isLoading ? null : _sendMessage,
-                          customBorder: const CircleBorder(),
-                          child: const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: Icon(
-                              Icons.send_rounded,
-                              color: Colors.white,
-                              size: 20,
+                      Row(
+                        children: [
+                          // Mic button
+                          Material(
+                            color: voiceService.isListening
+                                ? theme.colorScheme.error
+                                : (isDark
+                                      ? Colors.white.withValues(alpha: 0.08)
+                                      : Colors.black.withValues(alpha: 0.05)),
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              onTap: () {
+                                if (voiceService.isListening) {
+                                  voiceService.stopListening();
+                                } else {
+                                  voiceService.onResult = (text) {
+                                    _controller.text = text;
+                                    _sendMessage();
+                                  };
+                                  voiceService.startListening();
+                                }
+                              },
+                              customBorder: const CircleBorder(),
+                              child: Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Icon(
+                                  voiceService.isListening
+                                      ? Icons.stop_rounded
+                                      : Icons.mic_rounded,
+                                  color: voiceService.isListening
+                                      ? Colors.white
+                                      : theme.colorScheme.primary,
+                                  size: 22,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.05)
+                                    : Colors.black.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: TextField(
+                                controller: _controller,
+                                autofocus: true,
+                                style: theme.textTheme.bodyMedium,
+                                decoration: InputDecoration(
+                                  hintText: "Ask about this PDF...",
+                                  hintStyle: theme.textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: theme.textTheme.bodyMedium?.color
+                                            ?.withValues(alpha: 0.5),
+                                      ),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 14,
+                                  ),
+                                ),
+                                onSubmitted: (_) => _sendMessage(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Consumer<ChatProvider>(
+                            builder: (context, chatProvider, child) {
+                              final isLoading = chatProvider.isLoading(
+                                widget.pdfId,
+                              );
+                              return Material(
+                                color: isLoading
+                                    ? theme.colorScheme.primary.withValues(
+                                        alpha: 0.5,
+                                      )
+                                    : theme.colorScheme.primary,
+                                shape: const CircleBorder(),
+                                child: InkWell(
+                                  onTap: isLoading ? null : _sendMessage,
+                                  customBorder: const CircleBorder(),
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(12),
+                                    child: Icon(
+                                      Icons.send_rounded,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -337,28 +420,65 @@ class _ChatScreenState extends State<ChatScreen> {
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerRight,
-                    child: IconButton(
-                      icon: const Icon(Icons.copy_rounded, size: 16),
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: message.text));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text(
-                              'Copied to clipboard',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            backgroundColor: theme.colorScheme.primary,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        );
-                      },
-                      color: isDark ? Colors.white54 : Colors.black54,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      tooltip: 'Copy',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Listen button (TTS)
+                        Consumer<VoiceService>(
+                          builder: (context, voiceService, _) {
+                            return IconButton(
+                              icon: Icon(
+                                voiceService.isSpeaking
+                                    ? Icons.stop_circle_rounded
+                                    : Icons.volume_up_rounded,
+                                size: 16,
+                              ),
+                              onPressed: () {
+                                if (voiceService.isSpeaking) {
+                                  voiceService.stopSpeaking();
+                                } else {
+                                  voiceService.speak(message.text);
+                                }
+                              },
+                              color: voiceService.isSpeaking
+                                  ? theme.colorScheme.primary
+                                  : (isDark ? Colors.white54 : Colors.black54),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              tooltip: voiceService.isSpeaking
+                                  ? 'Stop'
+                                  : 'Listen',
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 12),
+                        // Copy button
+                        IconButton(
+                          icon: const Icon(Icons.copy_rounded, size: 16),
+                          onPressed: () {
+                            Clipboard.setData(
+                              ClipboardData(text: message.text),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text(
+                                  'Copied to clipboard',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                backgroundColor: theme.colorScheme.primary,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            );
+                          },
+                          color: isDark ? Colors.white54 : Colors.black54,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: 'Copy',
+                        ),
+                      ],
                     ),
                   ),
                 ],

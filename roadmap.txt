@@ -1,0 +1,23 @@
+PDify Future Roadmap v1.2.0 & Beyond
+-------------------------------------
+
+1. Voice Interaction
+   - Voice-to-Chat (STT) for hands-free questioning.
+   - Summaries-to-Voice (TTS) to listen while multitasking.
+
+2. Multi-Document Intelligence
+   - Ask questions across collections of PDFs (Knowledge Bases).
+   - Comparative analysis between documents.
+
+3. Multimodal & OCR
+   - Support for scanned images and handwriting using Gemini Vision.
+   - Scan physical docs directly into the app.
+
+4. Productivity & Organization
+   - Group PDFs into Folders or Project categories.
+   - Deep search (search within summary content).
+   - Export chat histories/summaries to PDF/Word.
+
+5. Insights
+   - "Time Saved" dashboard visualizing AI productivity.
+   - Topic clouds for common themes in your documents.
