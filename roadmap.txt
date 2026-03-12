@@ -21,3 +21,7 @@ PDify Future Roadmap v1.2.0 & Beyond
 5. Insights
    - "Time Saved" dashboard visualizing AI productivity.
    - Topic clouds for common themes in your documents.
+
+
+ Quick-Share Links
+Web Viewer: Generate a public (or password-protected) link to a summary that anyone can view without needing the app installed.

@@ -13,6 +13,7 @@ import 'package:pdify/providers/search_filter_provider.dart';
 import 'package:pdify/providers/bookmark_provider.dart';
 import 'package:pdify/chat_screen.dart';
 import 'package:pdify/providers/folder_provider.dart';
+import 'package:pdify/providers/summary_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pdify/widgets/glass_card.dart';
 import 'package:pdify/widgets/primary_button.dart';
@@ -312,16 +313,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     final provider = context.watch<SearchFilterProvider>();
                     final bookmarkProvider = context.watch<BookmarkProvider>();
                     final folderProvider = context.watch<FolderProvider>();
-
-                    // Build summary content map for deep search
-                    final Map<String, String> summaryContents = {};
-                    // We will populate this lazily from the summary stream
+                    final summaryProvider = context.watch<SummaryProvider>();
 
                     final filteredDocs = provider.filterAndSort(
                       snapshot.data!.docs,
                       bookmarkProvider.bookmarkedIds,
                       folderAssignments: folderProvider.assignments,
-                      summaryContents: summaryContents,
+                      summaryContents: summaryProvider.getAllSummaryTexts(),
                     );
 
                     if (filteredDocs.isEmpty) {
@@ -1239,6 +1237,8 @@ class SummaryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final summaryProvider = context.watch<SummaryProvider>();
+    final cachedData = summaryProvider.getCachedSummary(pdfId);
 
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -1246,7 +1246,8 @@ class SummaryView extends StatelessWidget {
           .where('pdfId', isEqualTo: pdfId)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            cachedData == null) {
           return const Padding(
             padding: EdgeInsets.all(24),
             child: Center(
@@ -1254,7 +1255,7 @@ class SummaryView extends StatelessWidget {
             ),
           );
         }
-        if (snapshot.hasError) {
+        if (snapshot.hasError && cachedData == null) {
           return Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
@@ -1265,9 +1266,63 @@ class SummaryView extends StatelessWidget {
         }
 
         final docs = snapshot.data?.docs ?? [];
-        if (docs.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.all(24),
+
+        // Categorize summaries
+        Map<String, dynamic>? fullSummary;
+        Map<String, dynamic>? examSummary;
+        Map<String, dynamic>? chapterSummary;
+
+        if (docs.isEmpty && cachedData != null) {
+          // Use cached data if Firestore is empty/waiting
+          fullSummary = cachedData['full'];
+          examSummary = cachedData['exam'];
+          chapterSummary = cachedData['chapters'];
+        } else {
+          // Use Firestore data and update cache
+          final Map<String, dynamic> newCacheEntry = {};
+          for (var doc in docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            final type = data['type'] ?? 'full';
+
+            if (type == 'full') {
+              fullSummary = data;
+              newCacheEntry['full'] = data;
+            } else if (type == 'exam') {
+              examSummary = data;
+              newCacheEntry['exam'] = data;
+            } else if (type == 'chapters') {
+              chapterSummary = data;
+              newCacheEntry['chapters'] = data;
+            }
+          }
+
+          if (newCacheEntry.isNotEmpty) {
+            // Include fileName in cache for deep search and UI
+            newCacheEntry['fileName'] =
+                fullSummary?['fileName'] ??
+                examSummary?['fileName'] ??
+                chapterSummary?['fileName'];
+            // Also store the combined text for deep search
+            newCacheEntry['content'] = [
+              fullSummary?['content'] ?? '',
+              examSummary?['content'] ?? '',
+              (chapterSummary?['chapters'] as List?)
+                      ?.map((c) => c['summary'])
+                      .join(' ') ??
+                  '',
+            ].join(' ');
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              summaryProvider.updateCache(pdfId, newCacheEntry);
+            });
+          }
+        }
+
+        if (fullSummary == null &&
+            examSummary == null &&
+            chapterSummary == null) {
+          return const Padding(
+            padding: EdgeInsets.all(24),
             child: Center(
               child: Text(
                 "Summaries appearing soon...",
@@ -1275,24 +1330,6 @@ class SummaryView extends StatelessWidget {
               ),
             ),
           );
-        }
-
-        // Categorize summaries
-        Map<String, dynamic>? fullSummary;
-        Map<String, dynamic>? examSummary;
-        Map<String, dynamic>? chapterSummary;
-
-        for (var doc in docs) {
-          final data = doc.data() as Map<String, dynamic>;
-          final type = data['type'] ?? 'full';
-
-          if (type == 'full') {
-            fullSummary = data;
-          } else if (type == 'exam') {
-            examSummary = data;
-          } else if (type == 'chapters') {
-            chapterSummary = data;
-          }
         }
 
         final List<Widget> tabs = [const Tab(text: "Summary")];
@@ -1715,7 +1752,10 @@ class _RewardedSummaryGateState extends State<_RewardedSummaryGate> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isUnlocked) {
+    final summaryProvider = context.watch<SummaryProvider>();
+    final isCached = summaryProvider.getCachedSummary(widget.pdfId) != null;
+
+    if (_isUnlocked || isCached) {
       return SummaryView(pdfId: widget.pdfId);
     }
 

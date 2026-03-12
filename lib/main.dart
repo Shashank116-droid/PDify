@@ -18,6 +18,7 @@ import 'package:pdify/providers/bookmark_provider.dart';
 import 'package:pdify/providers/chat_provider.dart';
 import 'package:pdify/services/voice_service.dart';
 import 'package:pdify/providers/folder_provider.dart';
+import 'package:pdify/providers/summary_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +42,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => VoiceService()),
         ChangeNotifierProvider(create: (_) => FolderProvider()..loadFolders()),
+        ChangeNotifierProvider(create: (_) => SummaryProvider()..loadCache()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
