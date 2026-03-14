@@ -6,7 +6,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:pdify/providers/summary_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:pdify/services/export_service.dart';
-import 'package:pdify/ad_service.dart';
+import 'package:pdify/services/ad_service.dart';
 
 class DocumentInsightsScreen extends StatefulWidget {
   final String pdfId;

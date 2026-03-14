@@ -4,15 +4,15 @@ import 'package:pdify/theme/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:pdify/welcome_screen.dart';
+import 'package:pdify/screens/welcome_screen.dart';
 import 'package:provider/provider.dart';
-import 'package:pdify/ad_service.dart';
+import 'package:pdify/services/ad_service.dart';
 import 'package:pdify/firebase_options.dart';
-import 'package:pdify/convert_screen.dart';
-import 'package:pdify/home_screen.dart';
-import 'package:pdify/login_screen.dart';
-import 'package:pdify/profile_screen.dart';
-import 'package:pdify/splash_screen.dart';
+import 'package:pdify/screens/convert_screen.dart';
+import 'package:pdify/screens/home_screen.dart';
+import 'package:pdify/screens/login_screen.dart';
+import 'package:pdify/screens/profile_screen.dart';
+import 'package:pdify/screens/splash_screen.dart';
 import 'package:pdify/providers/search_filter_provider.dart';
 import 'package:pdify/providers/theme_provider.dart';
 import 'package:pdify/providers/bookmark_provider.dart';
@@ -21,7 +21,7 @@ import 'package:pdify/services/voice_service.dart';
 import 'package:pdify/providers/navigation_provider.dart';
 import 'package:pdify/providers/folder_provider.dart';
 import 'package:pdify/providers/summary_provider.dart';
-import 'package:pdify/ai_assistant_screen.dart';
+import 'package:pdify/screens/ai_chat_screen.dart';
 import 'package:pdify/widgets/app_drawer.dart';
 
 Future<void> main() async {
@@ -114,7 +114,7 @@ class MainNavigation extends StatelessWidget {
   final List<Widget> _screens = const [
     HomeScreen(isDocumentsOnly: false), // AI Summarizer
     HomeScreen(isDocumentsOnly: true),  // Documents
-    AiAssistantScreen(), 
+    AiChatScreen(), 
     ConvertScreen(), 
   ];
 

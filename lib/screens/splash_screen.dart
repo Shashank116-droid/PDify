@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:pdify/welcome_screen.dart';
+import 'package:pdify/screens/welcome_screen.dart';
 import 'package:pdify/widgets/glass_card.dart';
 import 'package:pdify/widgets/mesh_background_scaffold.dart';
 

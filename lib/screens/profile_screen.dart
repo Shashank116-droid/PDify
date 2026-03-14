@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pdify/ad_service.dart';
+import 'package:pdify/services/ad_service.dart';
 import 'package:pdify/providers/theme_provider.dart';
 import 'package:pdify/widgets/glass_card.dart';
 import 'package:pdify/widgets/primary_button.dart';
@@ -112,6 +112,27 @@ class ProfileScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  // Logo
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'PDify',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white70,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
                   GlassCard(
                     borderRadius: 24,
                     padding: const EdgeInsets.symmetric(

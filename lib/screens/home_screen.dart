@@ -12,14 +12,15 @@ import 'package:pdify/providers/chat_provider.dart';
 import 'package:pdify/providers/navigation_provider.dart';
 import 'package:pdify/widgets/app_drawer.dart';
 import 'package:provider/provider.dart';
-import 'package:pdify/ad_service.dart';
+import 'package:pdify/services/ad_service.dart';
 import 'package:pdify/providers/search_filter_provider.dart';
 import 'package:pdify/providers/bookmark_provider.dart';
-import 'package:pdify/chat_screen.dart';
+import 'package:pdify/screens/ai_chat_screen.dart';
 import 'package:pdify/providers/folder_provider.dart';
 import 'package:pdify/providers/summary_provider.dart';
-import 'package:pdify/ai_assistant_screen.dart';
-import 'package:pdify/document_insights_screen.dart';
+import 'package:pdify/screens/document_insights_screen.dart';
+import 'package:pdify/widgets/premium_header.dart';
+import 'package:pdify/screens/profile_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pdify/widgets/glass_card.dart';
 import 'package:pdify/widgets/primary_button.dart';
@@ -458,79 +459,26 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildDashboardAppBar(BuildContext context, ThemeData theme) {
-    final user = FirebaseAuth.instance.currentUser;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  width: 28,
-                  height: 28,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                widget.isDocumentsOnly ? 'Documents' : 'AI Summarizer',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                  color: theme.brightness == Brightness.dark
-                      ? Colors.white
-                      : _accentBlue,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          if (_isDeleting || _isUploading)
-            const Padding(
-              padding: EdgeInsets.only(right: 16),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: _accentBlue,
-                ),
-              ),
-            ),
-          GestureDetector(
-            onTap: () => Scaffold.of(context).openDrawer(),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF06B6D4), Color(0xFF3B82F6)],
-                ),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
-                  width: 2,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  user?.email?.isNotEmpty == true
-                      ? user!.email![0].toUpperCase()
-                      : "U",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+    return PremiumHeader(
+      title: widget.isDocumentsOnly ? 'Documents' : 'AI Summarizer',
+      onProfileTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ProfileScreen()),
       ),
+      actions: [
+        if (_isDeleting || _isUploading)
+          const Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Color(0xFF3B82F6),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -1430,7 +1378,7 @@ class SummaryView extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) =>
-                      ChatScreen(pdfId: pdfId, fileName: fileName),
+                      AiChatScreen(pdfId: pdfId, fileName: fileName),
                 ),
               ),
               icon: const Icon(

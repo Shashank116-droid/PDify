@@ -162,6 +162,19 @@ class _LoginScreenState extends State<LoginScreen>
             children: [
               const SizedBox(height: 40),
 
+              // Logo
+              Center(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
               // App Title
               Text(
                 "PDify",

@@ -100,12 +100,34 @@ class AppDrawer extends StatelessWidget {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
               child: Column(
                 children: [
+                  // Logo
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      width: 64,
+                      height: 64,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'PDify',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -1,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  // User Avatar
                   Container(
-                    width: 80,
-                    height: 80,
+                    width: 72,
+                    height: 72,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: const Color(0xFF3B82F6).withOpacity(0.1),

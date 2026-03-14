@@ -7,10 +7,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
-
 import 'package:pdf_manipulator/pdf_manipulator.dart';
-import 'package:pdify/ad_service.dart';
-import 'package:pdify/conversion_service.dart';
+import 'package:pdify/services/ad_service.dart';
+
+import 'package:pdify/services/conversion_service.dart';
+import 'package:pdify/widgets/premium_header.dart';
+import 'package:pdify/screens/profile_screen.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdfx/pdfx.dart' as pdfx;
@@ -1003,63 +1005,11 @@ class _ConvertScreenState extends State<ConvertScreen> {
   }
 
   Widget _buildToolsAppBar(BuildContext context, ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  width: 28,
-                  height: 28,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Tools',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          GestureDetector(
-            onTap: () => Scaffold.of(context).openDrawer(),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF06B6D4), _accentBlue],
-                ),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
-                  width: 2,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  user?.email?.isNotEmpty == true
-                      ? user!.email![0].toUpperCase()
-                      : "U",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+    return PremiumHeader(
+      title: 'Tools',
+      onProfileTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ProfileScreen()),
       ),
     );
   }
