@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -79,8 +81,8 @@ class _ChatScreenState extends State<ChatScreen> {
                         Text(
                           widget.fileName,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.textTheme.bodySmall?.color?.withValues(
-                              alpha: 0.7,
+                            color: theme.textTheme.bodySmall?.color?.withOpacity(
+                              0.7,
                             ),
                           ),
                           maxLines: 1,
@@ -92,7 +94,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   IconButton(
                     icon: Icon(
                       Icons.picture_as_pdf_rounded,
-                      color: theme.colorScheme.primary.withValues(alpha: 0.8),
+                      color: theme.colorScheme.primary.withOpacity(0.8),
                     ),
                     onPressed: () {
                       final messages = context.read<ChatProvider>().getMessages(
@@ -109,7 +111,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   IconButton(
                     icon: Icon(
                       Icons.delete_outline_rounded,
-                      color: theme.colorScheme.error.withValues(alpha: 0.8),
+                      color: theme.colorScheme.error.withOpacity(0.8),
                     ),
                     onPressed: () {
                       context.read<ChatProvider>().clearChat(widget.pdfId);
@@ -137,8 +139,8 @@ class _ChatScreenState extends State<ChatScreen> {
                             Icon(
                               Icons.chat_bubble_outline_rounded,
                               size: 64,
-                              color: theme.colorScheme.primary.withValues(
-                                alpha: 0.3,
+                              color: theme.colorScheme.primary.withOpacity(
+                                0.3,
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -146,7 +148,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               "Ask Questions",
                               style: theme.textTheme.titleMedium?.copyWith(
                                 color: theme.textTheme.bodyMedium?.color
-                                    ?.withValues(alpha: 0.7),
+                                    ?.withOpacity(0.7),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -199,17 +201,23 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
 
             // Input Area
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.scaffoldBackgroundColor,
-                border: Border(
-                  top: BorderSide(
-                    color: isDark ? Colors.white10 : Colors.black12,
-                  ),
-                ),
-              ),
-              child: Consumer<VoiceService>(
+            Padding(
+              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 4),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(36),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(36),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withOpacity(0.15) : Colors.white.withOpacity(0.5),
+                        width: 1,
+                      ),
+                    ),
+                    child: Consumer<VoiceService>(
                 builder: (context, voiceService, _) {
                   return Column(
                     mainAxisSize: MainAxisSize.min,
@@ -253,8 +261,8 @@ class _ChatScreenState extends State<ChatScreen> {
                             color: voiceService.isListening
                                 ? theme.colorScheme.error
                                 : (isDark
-                                      ? Colors.white.withValues(alpha: 0.08)
-                                      : Colors.black.withValues(alpha: 0.05)),
+                                      ? Colors.white.withOpacity(0.08)
+                                      : Colors.black.withOpacity(0.05)),
                             shape: const CircleBorder(),
                             child: InkWell(
                               onTap: () {
@@ -288,8 +296,8 @@ class _ChatScreenState extends State<ChatScreen> {
                             child: Container(
                               decoration: BoxDecoration(
                                 color: isDark
-                                    ? Colors.white.withValues(alpha: 0.05)
-                                    : Colors.black.withValues(alpha: 0.05),
+                                    ? Colors.white.withOpacity(0.05)
+                                    : Colors.black.withOpacity(0.05),
                                 borderRadius: BorderRadius.circular(24),
                               ),
                               child: TextField(
@@ -301,7 +309,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                   hintStyle: theme.textTheme.bodyMedium
                                       ?.copyWith(
                                         color: theme.textTheme.bodyMedium?.color
-                                            ?.withValues(alpha: 0.5),
+                                            ?.withOpacity(0.5),
                                       ),
                                   border: InputBorder.none,
                                   contentPadding: const EdgeInsets.symmetric(
@@ -321,8 +329,8 @@ class _ChatScreenState extends State<ChatScreen> {
                               );
                               return Material(
                                 color: isLoading
-                                    ? theme.colorScheme.primary.withValues(
-                                        alpha: 0.5,
+                                    ? theme.colorScheme.primary.withOpacity(
+                                        0.5,
                                       )
                                     : theme.colorScheme.primary,
                                 shape: const CircleBorder(),
@@ -347,6 +355,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   );
                 },
               ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -358,30 +369,33 @@ class _ChatScreenState extends State<ChatScreen> {
     final isUser = message.role == 'user';
     final isDark = theme.brightness == Brightness.dark;
 
+    final borderRadius = BorderRadius.circular(24).copyWith(
+      bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(24),
+      bottomLeft: !isUser ? const Radius.circular(4) : const Radius.circular(24),
+    );
+
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.8,
         ),
-        decoration: BoxDecoration(
-          color: isUser
-              ? theme.colorScheme.primary
-              : (isDark ? const Color(0xFF1E293B) : Colors.white),
-          borderRadius: BorderRadius.circular(20).copyWith(
-            bottomRight: isUser
-                ? const Radius.circular(4)
-                : const Radius.circular(20),
-            bottomLeft: !isUser
-                ? const Radius.circular(4)
-                : const Radius.circular(20),
-          ),
+        child: ClipRRect(
+          borderRadius: borderRadius,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: isUser
+                    ? theme.colorScheme.primary.withOpacity(0.8)
+                    : (isDark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.7)),
+                borderRadius: borderRadius,
           boxShadow: !isUser
               ? [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
+                    color: Colors.black.withOpacity(0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 2),
                   ),
@@ -390,8 +404,8 @@ class _ChatScreenState extends State<ChatScreen> {
           border: !isUser
               ? Border.all(
                   color: isDark
-                      ? Colors.white.withValues(alpha: 0.1)
-                      : Colors.grey.withValues(alpha: 0.2),
+                      ? Colors.white.withOpacity(0.1)
+                      : Colors.grey.withOpacity(0.2),
                 )
               : null,
         ),
@@ -501,6 +515,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -520,8 +537,8 @@ class _ChatScreenState extends State<ChatScreen> {
           ).copyWith(bottomLeft: const Radius.circular(4)),
           border: Border.all(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.1)
-                : Colors.grey.withValues(alpha: 0.2),
+                ? Colors.white.withOpacity(0.1)
+                : Colors.grey.withOpacity(0.2),
           ),
         ),
         child: Row(
@@ -539,8 +556,8 @@ class _ChatScreenState extends State<ChatScreen> {
             Text(
               "Thinking...",
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.textTheme.bodyMedium?.color?.withValues(
-                  alpha: 0.7,
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(
+                  0.7,
                 ),
                 fontStyle: FontStyle.italic,
               ),
@@ -556,9 +573,9 @@ class _ChatScreenState extends State<ChatScreen> {
       label: Text(text),
       labelStyle: const TextStyle(fontSize: 13),
       backgroundColor: theme.brightness == Brightness.dark
-          ? Colors.white.withValues(alpha: 0.05)
-          : Colors.black.withValues(alpha: 0.05),
-      side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+          ? Colors.white.withOpacity(0.05)
+          : Colors.black.withOpacity(0.05),
+      side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.3)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       onPressed: () {
         _controller.text = text;

@@ -22,55 +22,184 @@ class ExportService {
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(40),
-          header: (ctx) => pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(
-                'PDify - $summaryType',
-                style: pw.TextStyle(
-                  fontSize: 10,
-                  color: PdfColor.fromHex('#7C3AED'),
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-              pw.SizedBox(height: 4),
-              pw.Divider(color: PdfColor.fromHex('#7C3AED'), thickness: 0.5),
-              pw.SizedBox(height: 8),
-            ],
-          ),
-          footer: (ctx) => pw.Align(
-            alignment: pw.Alignment.centerRight,
-            child: pw.Text(
-              'Page ${ctx.pageNumber} of ${ctx.pagesCount}',
-              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey),
-            ),
-          ),
+          header: (ctx) => _buildHeader(ctx, summaryType),
+          footer: (ctx) => _buildFooter(ctx),
           build: (ctx) => [
-            pw.Text(
-              fileName,
-              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
-            ),
+            _buildTitle(fileName),
             pw.SizedBox(height: 16),
-            // Split content into paragraphs to allow page breaks
-            ...cleanContent.split('\n').map((line) {
-              if (line.trim().isEmpty) return pw.SizedBox(height: 8);
-              return pw.Paragraph(
-                text: line,
-                style: const pw.TextStyle(fontSize: 12, lineSpacing: 2),
-                margin: const pw.EdgeInsets.only(bottom: 4),
+            ..._buildTextParagraphs(cleanContent),
+          ],
+        ),
+      );
+
+      await _saveAndShare(pdf, 'Summary_${fileName.replaceAll(' ', '_')}', context);
+    } catch (e) {
+      _showError(context, e);
+    }
+  }
+
+  /// Export Exam Prep (Definitions + Q&A) to PDF
+  static Future<void> exportExamPrepToPdf({
+    required BuildContext context,
+    required String fileName,
+    required List<dynamic> definitions,
+    required List<dynamic> qa,
+  }) async {
+    try {
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(40),
+          header: (ctx) => _buildHeader(ctx, 'Exam Prep Mode'),
+          footer: (ctx) => _buildFooter(ctx),
+          build: (ctx) => [
+            _buildTitle('Exam Prep: $fileName'),
+            pw.SizedBox(height: 20),
+            
+            if (definitions.isNotEmpty) ...[
+              pw.Header(level: 1, text: 'Key Definitions', textStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
+              pw.SizedBox(height: 10),
+              ...definitions.map((d) => pw.Bullet(
+                text: '${d['term'] ?? d['word'] ?? ''}: ${d['definition'] ?? d['meaning'] ?? ''}',
+                style: const pw.TextStyle(fontSize: 11),
+                margin: const pw.EdgeInsets.only(bottom: 6),
+              )),
+              pw.SizedBox(height: 20),
+            ],
+
+            if (qa.isNotEmpty) ...[
+              pw.Header(level: 1, text: 'Practice Q&A', textStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
+              pw.SizedBox(height: 10),
+              ...qa.map((item) {
+                final q = item['question'] ?? item['q'] ?? '';
+                final a = item['answer'] ?? item['a'] ?? '';
+                return pw.Container(
+                  margin: const pw.EdgeInsets.only(bottom: 12),
+                  padding: const pw.EdgeInsets.all(8),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.grey300),
+                    borderRadius: pw.BorderRadius.circular(4),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Q: ${item['question'] ?? item['q'] ?? ""}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
+                      pw.SizedBox(height: 4),
+                      pw.Text('A: ${item['answer'] ?? item['a'] ?? ""}', style: const pw.TextStyle(fontSize: 11)),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ],
+        ),
+      );
+
+      await _saveAndShare(pdf, 'ExamPrep_${fileName.replaceAll(' ', '_')}', context);
+    } catch (e) {
+      _showError(context, e);
+    }
+  }
+
+  /// Export Chapter Breakdown to PDF
+  static Future<void> exportChaptersToPdf({
+    required BuildContext context,
+    required String fileName,
+    required List<dynamic> chapters,
+  }) async {
+    try {
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(40),
+          header: (ctx) => _buildHeader(ctx, 'Chapter Breakdown'),
+          footer: (ctx) => _buildFooter(ctx),
+          build: (ctx) => [
+            _buildTitle('Chapters: $fileName'),
+            pw.SizedBox(height: 20),
+            ...chapters.map((c) {
+              final title = c['title'] ?? 'Chapter';
+              final content = c['summary'] ?? c['content'] ?? '';
+              return pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(title, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14, color: PdfColor.fromHex('#3B82F6'))),
+                  pw.SizedBox(height: 8),
+                  pw.Text(_cleanMarkdown(content), style: const pw.TextStyle(fontSize: 11, lineSpacing: 2)),
+                  pw.SizedBox(height: 16),
+                  pw.Divider(color: PdfColors.grey200),
+                  pw.SizedBox(height: 16),
+                ],
               );
             }),
           ],
         ),
       );
 
-      await _saveAndShare(pdf, 'Summary_$fileName', context);
+      await _saveAndShare(pdf, 'Chapters_${fileName.replaceAll(' ', '_')}', context);
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
-      }
+      _showError(context, e);
+    }
+  }
+
+  // --- Helper Methods ---
+
+  static pw.Widget _buildHeader(pw.Context ctx, String type) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          'PDify - $type',
+          style: pw.TextStyle(
+            fontSize: 10,
+            color: PdfColor.fromHex('#7C3AED'),
+            fontWeight: pw.FontWeight.bold,
+          ),
+        ),
+        pw.SizedBox(height: 4),
+        pw.Divider(color: PdfColor.fromHex('#7C3AED'), thickness: 0.5),
+        pw.SizedBox(height: 8),
+      ],
+    );
+  }
+
+  static pw.Widget _buildFooter(pw.Context ctx) {
+    return pw.Align(
+      alignment: pw.Alignment.centerRight,
+      child: pw.Text(
+        'Page ${ctx.pageNumber} of ${ctx.pagesCount}',
+        style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey),
+      ),
+    );
+  }
+
+  static pw.Widget _buildTitle(String title) {
+    return pw.Text(
+      title,
+      style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+    );
+  }
+
+  static List<pw.Widget> _buildTextParagraphs(String content) {
+    return content.split('\n').map((line) {
+      if (line.trim().isEmpty) return pw.SizedBox(height: 8);
+      return pw.Paragraph(
+        text: line,
+        style: const pw.TextStyle(fontSize: 11, lineSpacing: 2),
+        margin: const pw.EdgeInsets.only(bottom: 4),
+      );
+    }).toList();
+  }
+
+  static void _showError(BuildContext context, dynamic e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Export failed: $e')),
+      );
     }
   }
 
@@ -81,9 +210,7 @@ class ExportService {
     required List<ChatMessage> messages,
   }) async {
     if (messages.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('No messages to export')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No messages to export')));
       return;
     }
 
@@ -94,34 +221,10 @@ class ExportService {
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(40),
-          header: (ctx) => pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(
-                'PDify - Chat History',
-                style: pw.TextStyle(
-                  fontSize: 10,
-                  color: PdfColor.fromHex('#7C3AED'),
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-              pw.SizedBox(height: 4),
-              pw.Divider(color: PdfColor.fromHex('#7C3AED'), thickness: 0.5),
-              pw.SizedBox(height: 8),
-            ],
-          ),
-          footer: (ctx) => pw.Align(
-            alignment: pw.Alignment.centerRight,
-            child: pw.Text(
-              'Page ${ctx.pageNumber} of ${ctx.pagesCount}',
-              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey),
-            ),
-          ),
+          header: (ctx) => _buildHeader(ctx, 'Chat History'),
+          footer: (ctx) => _buildFooter(ctx),
           build: (ctx) => [
-            pw.Text(
-              'Chat: $fileName',
-              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
-            ),
+            _buildTitle('Chat: $fileName'),
             pw.SizedBox(height: 16),
             ...messages.map((msg) {
               final isUser = msg.role == 'user';
@@ -150,7 +253,7 @@ class ExportService {
                     pw.SizedBox(height: 4),
                     pw.Text(
                       _cleanMarkdown(msg.text),
-                      style: const pw.TextStyle(fontSize: 11, lineSpacing: 5),
+                      style: const pw.TextStyle(fontSize: 11, lineSpacing: 2),
                     ),
                   ],
                 ),
@@ -160,13 +263,9 @@ class ExportService {
         ),
       );
 
-      await _saveAndShare(pdf, 'Chat_$fileName', context);
+      await _saveAndShare(pdf, 'Chat_${fileName.replaceAll(' ', '_')}', context);
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
-      }
+      _showError(context, e);
     }
   }
 
@@ -180,12 +279,10 @@ class ExportService {
     final file = File('${dir.path}/$safeName.pdf');
     await file.writeAsBytes(await pdf.save());
 
-    await SharePlus.instance.share(
-      ShareParams(
-        files: [XFile(file.path)],
-        title: safeName,
-        text: 'Exported from PDify',
-      ),
+    await Share.shareXFiles(
+      [XFile(file.path)],
+      subject: safeName,
+      text: 'Exported from PDify 📄',
     );
 
     if (context.mounted) {

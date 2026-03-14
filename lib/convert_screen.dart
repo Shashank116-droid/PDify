@@ -1,8 +1,11 @@
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'dart:ui';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 import 'package:pdf_manipulator/pdf_manipulator.dart';
@@ -24,35 +27,53 @@ class ConvertScreen extends StatefulWidget {
 }
 
 class _ConvertScreenState extends State<ConvertScreen> {
+  final User? user = FirebaseAuth.instance.currentUser;
   bool _isProcessing = false;
   String? _statusMessage;
   bool _isSuccess = false;
   List<String> _shareablePaths = [];
+  
+  // Design Tokens
+  static const _deepBg = Color(0xFF0B1120);
+  static const _accentBlue = Color(0xFF3B82F6);
+  static const _accentCyan = Color(0xFF00D9FF);
+  static const _emerald = Color(0xFF10B981);
+  static const _amber = Color(0xFFFBBF24);
 
-  // ==================== DIRECTORIES ====================
+  Future<Directory> _getBaseDirectory() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final pdifyDir = Directory('${appDir.path}/PDify');
+    if (!await pdifyDir.exists()) {
+      await pdifyDir.create(recursive: true);
+    }
+    return pdifyDir;
+  }
 
   Future<Directory> _getPdfsDirectory() async {
-    final baseDir = Directory('/storage/emulated/0/Download/PDify/PDFs');
-    if (!await baseDir.exists()) {
-      await baseDir.create(recursive: true);
+    final baseDir = await _getBaseDirectory();
+    final dir = Directory('${baseDir.path}/PDFs');
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
     }
-    return baseDir;
+    return dir;
   }
 
   Future<Directory> _getImagesDirectory() async {
-    final baseDir = Directory('/storage/emulated/0/Download/PDify/Images');
-    if (!await baseDir.exists()) {
-      await baseDir.create(recursive: true);
+    final baseDir = await _getBaseDirectory();
+    final dir = Directory('${baseDir.path}/Images');
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
     }
-    return baseDir;
+    return dir;
   }
 
   Future<Directory> _getDocsDirectory() async {
-    final baseDir = Directory('/storage/emulated/0/Download/PDify/Documents');
-    if (!await baseDir.exists()) {
-      await baseDir.create(recursive: true);
+    final baseDir = await _getBaseDirectory();
+    final dir = Directory('${baseDir.path}/Documents');
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
     }
-    return baseDir;
+    return dir;
   }
 
   // ==================== DIALOGS ====================
@@ -71,7 +92,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.edit_document, color: Color(0xFF7C3AED)),
+            const Icon(Icons.edit_document, color: Color(0xFF3B82F6)),
             const SizedBox(width: 12),
             Text(suffix == '.pdf' ? 'Name your PDF' : 'Name your file'),
           ],
@@ -98,7 +119,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(
-                    color: Color(0xFF7C3AED),
+                    color: Color(0xFF3B82F6),
                     width: 2,
                   ),
                 ),
@@ -122,7 +143,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
               Navigator.of(context).pop(name);
             },
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF7C3AED),
+              backgroundColor: const Color(0xFF3B82F6),
             ),
             child: Text(buttonLabel),
           ),
@@ -143,7 +164,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
-            Icon(Icons.image_rounded, color: Color(0xFF7C3AED)),
+            Icon(Icons.image_rounded, color: Color(0xFF3B82F6)),
             SizedBox(width: 12),
             Text('Name your images'),
           ],
@@ -170,7 +191,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(
-                    color: Color(0xFF7C3AED),
+                    color: Color(0xFF3B82F6),
                     width: 2,
                   ),
                 ),
@@ -194,7 +215,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
               Navigator.of(context).pop(name);
             },
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF7C3AED),
+              backgroundColor: const Color(0xFF3B82F6),
             ),
             child: const Text('Extract Images'),
           ),
@@ -370,7 +391,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
           ),
           title: const Row(
             children: [
-              Icon(Icons.call_split_rounded, color: Color(0xFF7C3AED)),
+              Icon(Icons.call_split_rounded, color: Color(0xFF3B82F6)),
               SizedBox(width: 12),
               Text('Split PDF'),
             ],
@@ -396,7 +417,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
                 min: 1,
                 max: (totalPages - 1).toDouble(),
                 divisions: totalPages - 2 > 0 ? totalPages - 2 : 1,
-                activeColor: const Color(0xFF7C3AED),
+                activeColor: const Color(0xFF3B82F6),
                 label: '$selectedPage',
                 onChanged: (val) {
                   setDialogState(() => selectedPage = val.round());
@@ -431,7 +452,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
             FilledButton(
               onPressed: () => Navigator.of(context).pop(selectedPage),
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF7C3AED),
+                backgroundColor: const Color(0xFF3B82F6),
               ),
               child: const Text('Split'),
             ),
@@ -968,13 +989,129 @@ class _ConvertScreenState extends State<ConvertScreen> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
+  Widget _meshBlob(Color color, double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [color.withOpacity(0.6), color.withOpacity(0.0)],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToolsAppBar(BuildContext context, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 28,
+                  height: 28,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Tools',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: () => Scaffold.of(context).openDrawer(),
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF06B6D4), _accentBlue],
+                ),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 2,
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  user?.email?.isNotEmpty == true
+                      ? user!.email![0].toUpperCase()
+                      : "U",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroSection() {
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(20, 8, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'DOCUMENT WORKFLOW',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 2.5,
+              color: Color(0xFF60A5FA),
+            ),
+          ),
+          SizedBox(height: 10),
+          Text(
+            'Powerful tools for\nevery file.',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
+              height: 1.2,
+              letterSpacing: -0.5,
+            ),
+          ),
+          SizedBox(height: 14),
+          Text(
+            'Convert, compress, and organize your documents with our high-performance glass-engine.',
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.6,
+              color: Colors.white60,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ==================== BUILD ====================
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     // Design Tokens
-    // const color1 = Color(0xFF7C3AED); // Vivid Purple
+    // const color1 = Color(0xFF3B82F6); // Vivid Purple
     // const color2 = Color(0xFFFF6B6B); // Coral Red
     // const color3 = Color(0xFF00D9FF); // Cyan
 
@@ -984,7 +1121,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
         icon: Icons.merge_rounded,
         title: 'Merge PDF',
         description: 'Combine multiple PDFs into one',
-        color: const Color(0xFF7C3AED),
+        color: const Color(0xFF3B82F6),
         onTap: _isProcessing ? null : _mergePdf,
       ),
       _FeatureTile(
@@ -1053,90 +1190,275 @@ class _ConvertScreenState extends State<ConvertScreen> {
     ];
 
     return MeshBackgroundScaffold(
-      title: 'Tools',
+      showAppBar: false,
       body: Stack(
         children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Grid of feature tiles
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.0,
+          // ── Mesh blobs (New Design) ──
+          if (isDark) ...[
+            Positioned(top: -120, right: -100, child: _meshBlob(_accentBlue, 400)),
+            Positioned(bottom: 250, left: -120, child: _meshBlob(const Color(0xFF1E1B4B), 500)),
+            Positioned(bottom: -80, right: -60, child: _meshBlob(_accentCyan, 280)),
+          ],
+
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+              child: Container(
+                color: (isDark ? _deepBg : theme.scaffoldBackgroundColor).withOpacity(0.65),
+              ),
+            ),
+          ),
+
+          // ── Content ──
+          SafeArea(
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(child: _buildToolsAppBar(context, theme)),
+                SliverToBoxAdapter(child: _buildHeroSection()),
+
+                // ── Status Card (Preserved functionality) ──
+                if (_isProcessing || _statusMessage != null)
+                  SliverToBoxAdapter(child: _buildStatusCard(theme)),
+
+                // ── Conversion tool cards (Expanded) ──
+                SliverToBoxAdapter(
+                  child: _buildExpandedToolCard(
+                    onTap: _wordToPdf,
+                    icon: Icons.description_rounded,
+                    iconBgColor: const Color(0xFF3B82F6).withOpacity(0.15),
+                    iconColor: const Color(0xFF60A5FA),
+                    title: 'Word to PDF',
+                    subtitle: 'Convert .docx to high-fidelity PDF documents.',
+                    showTryNow: true,
                   ),
-                  itemCount: features.length,
-                  itemBuilder: (context, index) {
-                    final f = features[index];
-                    return _buildGridTile(f, theme);
-                  },
+                ),
+                SliverToBoxAdapter(
+                  child: _buildExpandedToolCard(
+                    onTap: _pdfToWord,
+                    icon: Icons.article_rounded,
+                    iconBgColor: const Color(0xFF7C3AED).withOpacity(0.15),
+                    iconColor: const Color(0xFFA78BFA),
+                    title: 'PDF to Word',
+                    subtitle: 'Extract text and layout from PDF to editable Word.',
+                    showTryNow: true,
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: _buildExpandedToolCard(
+                    onTap: _pdfToPpt,
+                    icon: Icons.present_to_all_rounded,
+                    iconBgColor: const Color(0xFFE11D48).withOpacity(0.15),
+                    iconColor: const Color(0xFFF87171),
+                    title: 'PDF to PPT',
+                    subtitle: 'Convert PDF to editable PowerPoint presentations.',
+                    showTryNow: true,
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: _buildExpandedToolCard(
+                    onTap: _compressImage,
+                    icon: Icons.photo_size_select_large_rounded,
+                    iconBgColor: const Color(0xFFF59E0B).withOpacity(0.15),
+                    iconColor: const Color(0xFFFCD34D),
+                    title: 'Compress Image',
+                    subtitle: 'Reduce JPG & PNG file sizes without losing quality.',
+                    showTryNow: true,
+                  ),
                 ),
 
-                const SizedBox(height: 16),
+                // ── Conversion tool cards (Compact) ──
+                SliverToBoxAdapter(
+                  child: _buildCompactToolCard(
+                    onTap: _mergePdf,
+                    icon: Icons.merge_type_rounded,
+                    iconBgColor: const Color(0xFF3B82F6).withOpacity(0.15),
+                    iconColor: const Color(0xFF60A5FA),
+                    title: 'Merge PDFs',
+                    subtitle: 'Combine multiple files into one.',
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: _buildCompactToolCard(
+                    onTap: _splitPdf,
+                    icon: Icons.call_split_rounded,
+                    iconBgColor: const Color(0xFF7C3AED).withOpacity(0.15),
+                    iconColor: const Color(0xFFA78BFA),
+                    title: 'Split PDF',
+                    subtitle: 'Extract pages as separate files.',
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: _buildCompactToolCard(
+                    onTap: _imagesToPdf,
+                    icon: Icons.image_rounded,
+                    iconBgColor: const Color(0xFF10B981).withOpacity(0.15),
+                    iconColor: _emerald,
+                    title: 'Images to PDF',
+                    subtitle: 'Create PDF from multiple images.',
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: _buildCompactToolCard(
+                    onTap: _pdfToImages,
+                    icon: Icons.collections_rounded,
+                    iconBgColor: const Color(0xFFFBBF24).withOpacity(0.15),
+                    iconColor: _amber,
+                    title: 'PDF to Images',
+                    subtitle: 'Export pages as JPG/PNG.',
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: _buildCompactToolCard(
+                    onTap: _compressPdf,
+                    icon: Icons.compress_rounded,
+                    iconBgColor: const Color(0xFF64748B).withOpacity(0.15),
+                    iconColor: const Color(0xFF94A3B8),
+                    title: 'Compress PDF',
+                    subtitle: 'Reduce size without quality loss.',
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: _buildCompactToolCard(
+                    onTap: _pptToPdf,
+                    icon: Icons.slideshow_rounded,
+                    iconBgColor: const Color(0xFFEF4444).withOpacity(0.15),
+                    iconColor: Colors.redAccent,
+                    title: 'PPT to PDF',
+                    subtitle: 'Preserve slide layouts.',
+                  ),
+                ),
 
-                // Status Display
-                if (_isProcessing || _statusMessage != null)
-                  _buildStatusCard(theme),
+                const SliverToBoxAdapter(child: SizedBox(height: 120)),
               ],
             ),
           ),
-          const Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: BannerAdWidget(),
-          ),
+          
         ],
       ),
     );
   }
 
-  Widget _buildGridTile(_FeatureTile feature, ThemeData theme) {
-    return GestureDetector(
-      onTap: feature.onTap,
-      child: GlassCard(
-        borderRadius: 20,
-        blur: 15,
-        opacity: 0.6,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: feature.color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(feature.icon, color: feature.color, size: 28),
+  Widget _buildCompactToolCard({
+    required VoidCallback onTap,
+    required IconData icon,
+    required Color iconBgColor,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: GestureDetector(
+        onTap: onTap,
+        child: GlassCard(
+          borderRadius: 20,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(color: iconBgColor, borderRadius: BorderRadius.circular(14)),
+                  child: Icon(icon, color: iconColor, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 4),
+                      Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: Colors.white.withOpacity(0.3)),
+              ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              feature.title,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandedToolCard({
+    required VoidCallback onTap,
+    required IconData icon,
+    required Color iconBgColor,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    bool showTryNow = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.08),
+                Colors.white.withOpacity(0.03),
+              ],
+            ),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(color: iconBgColor, borderRadius: BorderRadius.circular(18)),
+                          child: Icon(icon, color: iconColor, size: 28),
+                        ),
+                        if (showTryNow)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: _accentBlue.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(100),
+                              border: Border.all(color: _accentBlue.withOpacity(0.3)),
+                            ),
+                            child: const Text(
+                              'NEW',
+                              style: TextStyle(color: _accentBlue, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Text(title, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 8),
+                    Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14, height: 1.4)),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        const Text('Get Started', style: TextStyle(color: _accentBlue, fontWeight: FontWeight.w700, fontSize: 14)),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.arrow_forward_rounded, color: _accentBlue, size: 16),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              feature.description,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-                fontSize: 11,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -1144,7 +1466,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
   Widget _buildStatusCard(ThemeData theme) {
     final statusColor = _isProcessing
-        ? const Color(0xFF7C3AED)
+        ? const Color(0xFF3B82F6)
         : _isSuccess
         ? const Color(0xFF10B981)
         : const Color(0xFFEF4444);

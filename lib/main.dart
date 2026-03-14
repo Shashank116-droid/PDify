@@ -4,6 +4,7 @@ import 'package:pdify/theme/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:pdify/welcome_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:pdify/ad_service.dart';
 import 'package:pdify/firebase_options.dart';
@@ -17,8 +18,11 @@ import 'package:pdify/providers/theme_provider.dart';
 import 'package:pdify/providers/bookmark_provider.dart';
 import 'package:pdify/providers/chat_provider.dart';
 import 'package:pdify/services/voice_service.dart';
+import 'package:pdify/providers/navigation_provider.dart';
 import 'package:pdify/providers/folder_provider.dart';
 import 'package:pdify/providers/summary_provider.dart';
+import 'package:pdify/ai_assistant_screen.dart';
+import 'package:pdify/widgets/app_drawer.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,6 +44,7 @@ class MyApp extends StatelessWidget {
           create: (_) => BookmarkProvider()..loadBookmarks(),
         ),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (context) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => VoiceService()),
         ChangeNotifierProvider(create: (_) => FolderProvider()..loadFolders()),
         ChangeNotifierProvider(create: (_) => SummaryProvider()..loadCache()),
@@ -51,8 +56,8 @@ class MyApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
-            themeMode: themeProvider.themeMode,
-            home: const SplashScreen(),
+            themeMode: ThemeMode.dark, // Forced dark mode
+            home: const AuthWrapper(),
           );
         },
       ),
@@ -60,103 +65,142 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _minSplashDurationPassed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Ensure splash shows for at least 2 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _minSplashDurationPassed = true;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+        // If still waiting for auth or haven't shown splash long enough, show splash
+        if (snapshot.connectionState == ConnectionState.waiting || !_minSplashDurationPassed) {
+          return const SplashScreen(isInitialBoot: true);
         }
+        
         if (snapshot.hasData) {
           return const MainNavigation();
         }
-        return const LoginScreen();
+        return const WelcomeScreen();
       },
     );
   }
 }
 
-class MainNavigation extends StatefulWidget {
+
+class MainNavigation extends StatelessWidget {
   const MainNavigation({super.key});
 
-  @override
-  State<MainNavigation> createState() => _MainNavigationState();
-}
-
-class _MainNavigationState extends State<MainNavigation> {
-  int _currentIndex = 0;
-
   final List<Widget> _screens = const [
-    HomeScreen(),
-    ConvertScreen(),
-    ProfileScreen(),
+    HomeScreen(isDocumentsOnly: false), // AI Summarizer
+    HomeScreen(isDocumentsOnly: true),  // Documents
+    AiAssistantScreen(), 
+    ConvertScreen(), 
   ];
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final navProvider = context.watch<NavigationProvider>();
 
     return Scaffold(
       extendBody: true,
-      body: IndexedStack(index: _currentIndex, children: _screens),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : Colors.white.withValues(alpha: 0.5),
-              width: 1.0,
-            ),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isDark
-                  ? Colors.black.withValues(alpha: 0.3)
-                  : Colors.black.withValues(alpha: 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-            child: BottomNavigationBar(
-              currentIndex: _currentIndex,
-              onTap: (index) => setState(() => _currentIndex = index),
-              selectedItemColor: const Color(0xFF7C3AED),
-              unselectedItemColor: Colors.grey,
-              backgroundColor: isDark
-                  ? const Color(0xFF1E293B).withValues(alpha: 0.7)
-                  : Colors.white.withValues(alpha: 0.7),
-              elevation: 0,
-              type: BottomNavigationBarType.fixed,
-              showUnselectedLabels: true,
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.home_rounded),
-                  label: 'Home',
+      drawer: const AppDrawer(), // Add the new drawer
+      body: IndexedStack(index: navProvider.currentIndex, children: _screens),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const BannerAdWidget(),
+          Container(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.1)
+                      : Colors.white.withOpacity(0.5),
+                  width: 1.0,
                 ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.transform_rounded),
-                  label: 'Convert',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.person_rounded),
-                  label: 'Profile',
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isDark
+                      ? Colors.black.withOpacity(0.3)
+                      : Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, -5),
                 ),
               ],
             ),
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+                child: BottomNavigationBar(
+                  currentIndex: navProvider.currentIndex,
+                  onTap: (index) => navProvider.setIndex(index),
+                  selectedItemColor: const Color(0xFF3B82F6),
+                  unselectedItemColor: isDark ? Colors.white54 : Colors.grey,
+                  backgroundColor: isDark
+                      ? const Color(0xFF0F172A).withOpacity(0.5)
+                      : Colors.white.withOpacity(0.5),
+                  elevation: 0,
+                  type: BottomNavigationBarType.fixed,
+                  showUnselectedLabels: true,
+                  selectedIconTheme: const IconThemeData(
+                    shadows: [Shadow(color: Color(0xFF3B82F6), blurRadius: 12)],
+                  ),
+                  selectedLabelStyle: const TextStyle(
+                    shadows: [Shadow(color: Color(0xFF3B82F6), blurRadius: 12)],
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                  unselectedLabelStyle: const TextStyle(
+                    fontSize: 12,
+                  ),
+                  items: const [
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.auto_awesome_mosaic_rounded),
+                      label: 'AI Summarizer',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.description_rounded),
+                      label: 'Documents',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.auto_awesome_rounded), // Or generic text icon
+                      label: 'Chat',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.grid_view_rounded),
+                      label: 'Tools',
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
+

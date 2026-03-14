@@ -17,6 +17,18 @@ class ChatProvider extends ChangeNotifier {
   // Map of pdfId to loading state
   final Map<String, bool> _isLoading = {};
 
+  String? _activePdfId;
+  String? _activeFileName;
+
+  String? get activePdfId => _activePdfId;
+  String? get activeFileName => _activeFileName;
+
+  void setActiveContext(String? pdfId, String? fileName) {
+    _activePdfId = pdfId;
+    _activeFileName = fileName;
+    notifyListeners();
+  }
+
   List<ChatMessage> getMessages(String pdfId) {
     return _messages[pdfId] ?? [];
   }

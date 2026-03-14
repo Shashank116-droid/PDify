@@ -36,8 +36,8 @@ class GlassCard extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: isDark
-                ? Colors.black.withValues(alpha: 0.3)
-                : Colors.grey.withValues(alpha: 0.1),
+                ? Colors.black.withOpacity(0.3)
+                : Colors.grey.withOpacity(0.1),
             blurRadius: 15,
             spreadRadius: 1,
             offset: const Offset(0, 4),
@@ -49,20 +49,37 @@ class GlassCard extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
           child: Container(
-            padding: padding ?? const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(isDark ? 1.0 : 0.0), // 1px for gradient border
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF1E293B).withValues(alpha: opacity)
-                  : Colors.white.withValues(alpha: opacity),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.1)
-                    : Colors.white.withValues(alpha: 0.5),
-                width: 1.0,
-              ),
               borderRadius: BorderRadius.circular(borderRadius),
+              gradient: isDark
+                  ? LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.white.withOpacity(0.2),
+                        Colors.transparent,
+                        Colors.white.withOpacity(0.05),
+                      ],
+                    )
+                  : null,
             ),
-            child: child,
+            child: Container(
+              padding: padding ?? const EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withOpacity(0.05)
+                    : Colors.white.withOpacity(opacity),
+                borderRadius: BorderRadius.circular(isDark ? borderRadius - 1 : borderRadius),
+                border: isDark
+                    ? null
+                    : Border.all(
+                        color: Colors.white.withOpacity(0.5),
+                        width: 1.0,
+                      ),
+              ),
+              child: child,
+            ),
           ),
         ),
       ),

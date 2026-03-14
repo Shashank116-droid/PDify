@@ -105,16 +105,22 @@ class AdService {
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
+          debugPrint("AdService: Interstitial loaded.");
           _interstitialAd = ad;
           _isInterstitialLoaded = true;
 
           ad.fullScreenContentCallback = FullScreenContentCallback(
+            onAdShowedFullScreenContent: (ad) {
+              debugPrint("AdService: Interstitial showed.");
+            },
             onAdDismissedFullScreenContent: (ad) {
+              debugPrint("AdService: Interstitial dismissed.");
               ad.dispose();
               _isInterstitialLoaded = false;
-              loadInterstitialAd(); // Reload for next time
+              loadInterstitialAd(); // Reload
             },
             onAdFailedToShowFullScreenContent: (ad, error) {
+              debugPrint("AdService: Interstitial failed to show: $error");
               ad.dispose();
               _isInterstitialLoaded = false;
               loadInterstitialAd();
@@ -122,8 +128,8 @@ class AdService {
           );
         },
         onAdFailedToLoad: (error) {
+          debugPrint("AdService: Interstitial failed to load: $error");
           _isInterstitialLoaded = false;
-          // Retry after delay
           Future.delayed(const Duration(seconds: 30), loadInterstitialAd);
         },
       ),
@@ -132,9 +138,15 @@ class AdService {
 
   Future<void> showInterstitialAd() async {
     if (_interstitialAd != null && _isInterstitialLoaded) {
-      await _interstitialAd!.show();
+      try {
+        await _interstitialAd!.show();
+      } catch (e) {
+        debugPrint("AdService: Error showing interstitial: $e");
+        _isInterstitialLoaded = false;
+        loadInterstitialAd();
+      }
     } else {
-      loadInterstitialAd(); // Load for next time
+      loadInterstitialAd();
     }
   }
 
@@ -146,16 +158,22 @@ class AdService {
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
+          debugPrint("AdService: Rewarded ad loaded.");
           _rewardedAd = ad;
           _isRewardedLoaded = true;
 
           ad.fullScreenContentCallback = FullScreenContentCallback(
+            onAdShowedFullScreenContent: (ad) {
+              debugPrint("AdService: Rewarded ad showed.");
+            },
             onAdDismissedFullScreenContent: (ad) {
+              debugPrint("AdService: Rewarded ad dismissed.");
               ad.dispose();
               _isRewardedLoaded = false;
-              loadRewardedAd(); // Reload for next time
+              loadRewardedAd();
             },
             onAdFailedToShowFullScreenContent: (ad, error) {
+              debugPrint("AdService: Rewarded ad failed to show: $error");
               ad.dispose();
               _isRewardedLoaded = false;
               loadRewardedAd();
@@ -163,6 +181,7 @@ class AdService {
           );
         },
         onAdFailedToLoad: (error) {
+          debugPrint("AdService: Rewarded ad failed to load: $error");
           _isRewardedLoaded = false;
           Future.delayed(const Duration(seconds: 30), loadRewardedAd);
         },
@@ -170,18 +189,28 @@ class AdService {
     );
   }
 
-  /// Shows rewarded ad and calls [onRewarded] when user earns reward
   Future<bool> showRewardedAd({required Function() onRewarded}) async {
+    debugPrint("AdService: Attempting to show rewarded ad. Loaded: $_isRewardedLoaded");
+    
     if (_rewardedAd != null && _isRewardedLoaded) {
-      await _rewardedAd!.show(
-        onUserEarnedReward: (ad, reward) {
-          onRewarded();
-        },
-      );
-      return true;
+      try {
+        await _rewardedAd!.show(
+          onUserEarnedReward: (ad, reward) {
+            debugPrint("AdService: User earned reward.");
+            onRewarded();
+          },
+        );
+        return true;
+      } catch (e) {
+        debugPrint("AdService: Exception showing rewarded ad: $e");
+        _isRewardedLoaded = false;
+        loadRewardedAd();
+        return false;
+      }
     } else {
+      debugPrint("AdService: Ad not loaded yet.");
       loadRewardedAd();
-      return false; // Ad not ready
+      return false;
     }
   }
 

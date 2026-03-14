@@ -127,12 +127,12 @@ class ProfileScreen extends StatelessWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: const Color(
-                              0xFF7C3AED,
-                            ).withValues(alpha: 0.1),
+                              0xFF3B82F6,
+                            ).withOpacity(0.1),
                             border: Border.all(
                               color: const Color(
-                                0xFF7C3AED,
-                              ).withValues(alpha: 0.2),
+                                0xFF3B82F6,
+                              ).withOpacity(0.2),
                               width: 2,
                             ),
                           ),
@@ -144,7 +144,7 @@ class ProfileScreen extends StatelessWidget {
                               style: const TextStyle(
                                 fontSize: 40,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF7C3AED),
+                                color: Color(0xFF3B82F6),
                               ),
                             ),
                           ),
@@ -164,51 +164,7 @@ class ProfileScreen extends StatelessWidget {
                           "Free Plan",
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.textTheme.bodyMedium?.color
-                                ?.withValues(alpha: 0.7),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        // Theme Toggle
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: 0.08,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    themeProvider.isDarkMode
-                                        ? Icons.dark_mode_rounded
-                                        : Icons.light_mode_rounded,
-                                    color: theme.colorScheme.primary,
-                                    size: 22,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    themeProvider.isDarkMode
-                                        ? 'Dark Mode'
-                                        : 'Light Mode',
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Switch(
-                                value: themeProvider.isDarkMode,
-                                onChanged: (_) => themeProvider.toggleTheme(),
-                                activeColor: theme.colorScheme.primary,
-                              ),
-                            ],
+                                ?.withOpacity(0.7),
                           ),
                         ),
                         const SizedBox(height: 32),
@@ -239,12 +195,6 @@ class ProfileScreen extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-          const Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: BannerAdWidget(),
           ),
         ],
       ),

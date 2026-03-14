@@ -33,7 +33,13 @@ class SummaryProvider extends ChangeNotifier {
 
   /// Retrieves a summary from the local cache. Returns null if not found.
   Map<String, dynamic>? getCachedSummary(String pdfId) {
-    return _cache[pdfId];
+    final data = _cache[pdfId];
+    if (data != null) {
+      debugPrint('SummaryProvider: Cache HIT for $pdfId');
+    } else {
+      debugPrint('SummaryProvider: Cache MISS for $pdfId');
+    }
+    return data;
   }
 
   /// Updates the local cache with new summary data and persists it.
@@ -46,8 +52,12 @@ class SummaryProvider extends ChangeNotifier {
 
     // Check if the data is actually different to avoid redundant saves
     final existing = _cache[pdfId];
-    if (existing != null && _areMapsEqual(existing, sanitized)) return;
+    if (existing != null && _areMapsEqual(existing, sanitized)) {
+      debugPrint('SummaryProvider: updateCache skipped for $pdfId (no change)');
+      return;
+    }
 
+    debugPrint('SummaryProvider: updating cache for $pdfId...');
     _cache[pdfId] = sanitized;
     notifyListeners();
     await _saveToStorage();
@@ -67,9 +77,9 @@ class SummaryProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final String jsonString = json.encode(_cache);
       await prefs.setString(_storageKey, jsonString);
-      debugPrint('SummaryProvider: saved ${_cache.length} summaries to disk');
+      debugPrint('SummaryProvider: saved ${_cache.length} summaries to disk (key: $_storageKey)');
     } catch (e) {
-      debugPrint('SummaryProvider: Error saving cache: $e');
+      debugPrint('SummaryProvider: Error saving cache to disk: $e');
     }
   }
 
