@@ -21,6 +21,7 @@ import 'package:pdify/services/voice_service.dart';
 import 'package:pdify/providers/navigation_provider.dart';
 import 'package:pdify/providers/folder_provider.dart';
 import 'package:pdify/providers/summary_provider.dart';
+import 'package:pdify/providers/highlight_provider.dart';
 import 'package:pdify/screens/ai_chat_screen.dart';
 import 'package:pdify/widgets/app_drawer.dart';
 
@@ -48,6 +49,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => VoiceService()),
         ChangeNotifierProvider(create: (_) => FolderProvider()..loadFolders()),
         ChangeNotifierProvider(create: (_) => SummaryProvider()..loadCache()),
+        ChangeNotifierProvider(create: (_) => HighlightProvider()..loadHighlights()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

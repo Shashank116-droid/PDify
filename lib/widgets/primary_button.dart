@@ -10,6 +10,9 @@ class PrimaryButton extends StatelessWidget {
   final Color? backgroundColor;
   final Color? textColor;
 
+  final EdgeInsetsGeometry? padding;
+  final double? fontSize;
+
   const PrimaryButton({
     super.key,
     required this.text,
@@ -20,6 +23,8 @@ class PrimaryButton extends StatelessWidget {
     this.height = 50.0,
     this.backgroundColor,
     this.textColor,
+    this.padding,
+    this.fontSize,
   });
 
   @override
@@ -35,7 +40,7 @@ class PrimaryButton extends StatelessWidget {
           elevation: 4,
           shadowColor: (backgroundColor ?? Theme.of(context).primaryColor)
               .withOpacity(0.4),
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: padding ?? const EdgeInsets.symmetric(horizontal: 24),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -59,8 +64,8 @@ class PrimaryButton extends StatelessWidget {
                   ],
                   Text(
                     text,
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: TextStyle(
+                      fontSize: fontSize ?? 16,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.5,
                     ),

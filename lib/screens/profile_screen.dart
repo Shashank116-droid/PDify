@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pdify/services/ad_service.dart';
+import 'package:pdify/main.dart';
 import 'package:pdify/providers/theme_provider.dart';
 import 'package:pdify/widgets/glass_card.dart';
 import 'package:pdify/widgets/primary_button.dart';
@@ -14,7 +15,13 @@ class ProfileScreen extends StatelessWidget {
   Future<void> _signOut(BuildContext context) async {
     try {
       await FirebaseAuth.instance.signOut();
-      // AuthWrapper in main.dart will handle navigation to LoginScreen
+      if (context.mounted) {
+        // Clear the stack and restart from AuthWrapper
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const AuthWrapper()),
+          (route) => false,
+        );
+      }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(

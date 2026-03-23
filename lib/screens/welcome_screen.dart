@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:pdify/screens/login_screen.dart';
+import 'package:pdify/screens/demo_video_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -257,7 +259,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       width: double.infinity,
       height: 56,
       child: OutlinedButton.icon(
-        onPressed: _navigateToAuth,
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const DemoVideoScreen(videoPath: 'assets/videos/pdify-demo.mp4'),
+            ),
+          );
+        },
         icon: const Icon(Icons.play_circle_fill_rounded, size: 22),
         label: const Text(
           'View Demo',
@@ -417,25 +425,25 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         icon: Icons.psychology_rounded,
         iconColor: const Color(0xFF60A5FA),
         title: 'AI Parsing',
-        subtitle: 'Natural language\nunderstanding\nat scale.',
+        subtitle: 'Natural language understanding at scale.',
       ),
       _FeatureItem(
         icon: Icons.shield_rounded,
         iconColor: const Color(0xFF34D399),
         title: 'Secure Vault',
-        subtitle: 'Military-grade\nencryption for\nall files.',
+        subtitle: 'Military-grade encryption for all files.',
       ),
       _FeatureItem(
         icon: Icons.sync_rounded,
         iconColor: const Color(0xFFFBBF24),
         title: 'Real-time Sync',
-        subtitle: 'Access your\ndata across\nall devices.',
+        subtitle: 'Access your data across all devices.',
       ),
       _FeatureItem(
         icon: Icons.grid_view_rounded,
         iconColor: const Color(0xFFA78BFA),
         title: 'Batch Process',
-        subtitle: 'Summarize\n100+ PDFs in\nseconds.',
+        subtitle: 'Summarize 100+ PDFs in seconds.',
       ),
     ];
 
@@ -445,7 +453,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 14,
       crossAxisSpacing: 14,
-      childAspectRatio: 1.15,
+      childAspectRatio: 0.95,
       children: features.map((f) => _buildFeatureTile(f)).toList(),
     );
   }
@@ -512,14 +520,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 fontSize: 14,
               ),
             ),
-            const SizedBox(width: 6),
-            Text(
-              '© 2024 Intelligent Systems Inc.',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.4),
-                fontSize: 12,
-              ),
-            ),
           ],
         ),
         const SizedBox(height: 14),
@@ -527,7 +527,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             _footerLink('PRIVACY POLICY'),
-            _footerLink('TERMS OF SERVICE'),
             _footerLink('SUPPORT'),
           ],
         ),
@@ -536,13 +535,28 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 
   Widget _footerLink(String text) {
-    return Text(
-      text,
-      style: TextStyle(
-        color: Colors.white.withOpacity(0.35),
-        fontSize: 10,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.5,
+    return InkWell(
+      onTap: () async {
+        if (text == 'PRIVACY POLICY') {
+          final Uri url = Uri.parse('https://vrbharat.github.io/PDify-Policy/');
+          if (await canLaunchUrl(url)) {
+            await launchUrl(url);
+          }
+        } else if (text == 'SUPPORT') {
+          final Uri url = Uri.parse('https://www.vrbharat.tech/');
+          if (await canLaunchUrl(url)) {
+            await launchUrl(url);
+          }
+        }
+      },
+      child: Text(
+        text,
+        style: TextStyle(
+          color: Colors.white.withOpacity(0.35),
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }

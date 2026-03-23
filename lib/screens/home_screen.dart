@@ -28,6 +28,12 @@ import 'package:pdify/widgets/mesh_background_scaffold.dart';
 import 'package:pdify/services/export_service.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:pdfx/pdfx.dart';
+import 'package:pdify/repositories/pdf_repository.dart';
+import 'package:pdify/repositories/summary_repository.dart';
+import 'package:pdify/widgets/upload_card.dart';
+import 'package:pdify/screens/pdf_highlight_viewer_screen.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isDocumentsOnly;
@@ -45,6 +51,9 @@ class _HomeScreenState extends State<HomeScreen>
   bool _isDeleting = false;
   bool _isGenerating = false;
   String _statusMessage = "";
+
+  final PdfRepository _pdfRepo = PdfRepository();
+  final SummaryRepository _summaryRepo = SummaryRepository();
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -126,20 +135,12 @@ class _HomeScreenState extends State<HomeScreen>
         final pageCount = pdfDoc.pagesCount;
         await pdfDoc.close();
 
-        String storagePath = 'users/${user!.uid}/$fileName';
-        Reference ref = FirebaseStorage.instance.ref().child(storagePath);
-        await ref.putFile(file);
-        String downloadUrl = await ref.getDownloadURL();
-
-        final docRef = await FirebaseFirestore.instance.collection('pdfs').add({
-          'userId': user!.uid,
-          'fileUrl': downloadUrl,
-          'fileName': fileName,
-          'storagePath': storagePath,
-          'uploadedAt': FieldValue.serverTimestamp(),
-          'status': 'processing',
-          'pageCount': pageCount,
-        });
+        final docRef = await _pdfRepo.uploadPdf(
+          file: file,
+          userId: user!.uid,
+          fileName: fileName,
+          pageCount: pageCount,
+        );
 
         final pdfId = docRef.id;
 
@@ -152,10 +153,8 @@ class _HomeScreenState extends State<HomeScreen>
         }
 
         // Listen for the summary to be generated
-        summarySubscription = FirebaseFirestore.instance
-            .collection('summaries')
-            .where('pdfId', isEqualTo: pdfId)
-            .snapshots()
+        summarySubscription = _summaryRepo
+            .getSummariesStreamByPdfId(pdfId)
             .listen((snapshot) {
               if (snapshot.docs.isNotEmpty && mounted) {
                 setState(() {
@@ -216,25 +215,20 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() => _isDeleting = true);
 
     try {
-      final pdfSnapshot = await FirebaseFirestore.instance
-          .collection('pdfs')
-          .where('userId', isEqualTo: userId)
-          .get();
+      final pdfSnapshot = await _pdfRepo.getUserPdfsFuture(userId);
 
       final batch = FirebaseFirestore.instance.batch();
 
       for (final pdfDoc in pdfSnapshot.docs) {
-        final storagePath = pdfDoc.data()['storagePath'] as String?;
+        final data = pdfDoc.data() as Map<String, dynamic>?;
+        final storagePath = data?['storagePath'] as String?;
         if (storagePath != null && storagePath.isNotEmpty) {
           try {
             await FirebaseStorage.instance.ref().child(storagePath).delete();
           } catch (_) {}
         }
 
-        final summarySnapshot = await FirebaseFirestore.instance
-            .collection('summaries')
-            .where('pdfId', isEqualTo: pdfDoc.id)
-            .get();
+        final summarySnapshot = await _summaryRepo.getSummariesFutureByPdfId(pdfDoc.id);
         for (final summaryDoc in summarySnapshot.docs) {
           batch.delete(summaryDoc.reference);
         }
@@ -284,22 +278,8 @@ class _HomeScreenState extends State<HomeScreen>
     if (confirmed != true || !mounted) return;
 
     try {
-      if (storagePath != null && storagePath.isNotEmpty) {
-        try {
-          await FirebaseStorage.instance.ref().child(storagePath).delete();
-        } catch (_) {}
-      }
-
-      final summarySnapshot = await FirebaseFirestore.instance
-          .collection('summaries')
-          .where('pdfId', isEqualTo: docId)
-          .get();
-      final batch = FirebaseFirestore.instance.batch();
-      for (final doc in summarySnapshot.docs) {
-        batch.delete(doc.reference);
-      }
-      batch.delete(FirebaseFirestore.instance.collection('pdfs').doc(docId));
-      await batch.commit();
+      await _summaryRepo.deleteSummariesForPdf(docId);
+      await _pdfRepo.deletePdf(docId, storagePath);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -346,9 +326,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (newName == null || newName.isEmpty || newName == currentName) return;
 
     try {
-      await FirebaseFirestore.instance.collection('pdfs').doc(docId).update({
-        'fileName': newName,
-      });
+      await _pdfRepo.renamePdf(docId, newName);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('PDF renamed successfully')),
@@ -363,26 +341,55 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  Future<void> _retryPdf(String docId, Map<String, dynamic> data) async {
+  Future<void> _openHighlightViewer(String docId, String fileName, String? fileUrl) async {
+    if (fileUrl == null || fileUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('File URL not available')),
+      );
+      return;
+    }
+
     try {
-      final summaries = await FirebaseFirestore.instance
-          .collection('summaries')
-          .where('pdfId', isEqualTo: docId)
-          .get();
-      for (final doc in summaries.docs) {
-        await doc.reference.delete();
+      // Show loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Opening PDF for study...'), duration: Duration(seconds: 1)),
+      );
+
+      // Download to temp directory
+      final tempDir = await getTemporaryDirectory();
+      final filePath = '${tempDir.path}/$docId.pdf';
+      final file = File(filePath);
+
+      if (!await file.exists()) {
+        final response = await http.get(Uri.parse(fileUrl));
+        await file.writeAsBytes(response.bodyBytes);
       }
 
-      await FirebaseFirestore.instance.collection('pdfs').doc(docId).delete();
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PdfHighlightViewerScreen(
+              pdfId: docId,
+              pdfName: fileName,
+              filePath: filePath,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error opening PDF: $e')),
+        );
+      }
+    }
+  }
 
-      await FirebaseFirestore.instance.collection('pdfs').add({
-        'userId': data['userId'],
-        'fileUrl': data['fileUrl'],
-        'storagePath': data['storagePath'],
-        'fileName': data['fileName'],
-        'status': 'processing',
-        'uploadedAt': FieldValue.serverTimestamp(),
-      });
+  Future<void> _retryPdf(String docId, Map<String, dynamic> data) async {
+    try {
+      await _summaryRepo.deleteSummariesForPdf(docId);
+      await _pdfRepo.retryPdf(docId, data);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -417,7 +424,14 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 if (!widget.isDocumentsOnly) ...[
                   const SliverToBoxAdapter(child: SizedBox(height: 20)),
-                  SliverToBoxAdapter(child: _buildUploadCard(theme)),
+                  SliverToBoxAdapter(
+                    child: UploadCard(
+                      isUploading: _isUploading,
+                      isGenerating: _isGenerating,
+                      statusMessage: _statusMessage,
+                      onUploadPressed: _pickAndUploadPdf,
+                    ),
+                  ),
                   const SliverToBoxAdapter(child: SizedBox(height: 12)),
                   SliverToBoxAdapter(child: _buildLatestDocumentSection(theme)),
                   const SliverToBoxAdapter(child: SizedBox(height: 20)),
@@ -478,159 +492,6 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
           ),
-      ],
-    );
-  }
-
-  Widget _buildUploadCard(ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              _accentBlue.withOpacity(0.12),
-              _accentCyan.withOpacity(0.05),
-            ],
-          ),
-          border: Border.all(color: _accentBlue.withOpacity(0.2)),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: _accentBlue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Icon(
-                          (_isUploading || _isGenerating)
-                              ? Icons.sync_rounded
-                              : Icons.cloud_upload_rounded,
-                          color: _accentBlue,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              (_isUploading || _isGenerating)
-                                  ? _statusMessage
-                                  : "Upload Document",
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              (_isUploading || _isGenerating)
-                                  ? "Please wait while we process your file"
-                                  : "Analyze any PDF with AI",
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.5),
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (_isUploading || _isGenerating) ...[
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              _accentBlue,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          _statusMessage,
-                          style: TextStyle(
-                            color: _accentBlue.withOpacity(0.8),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ] else ...[
-                    const SizedBox(height: 20),
-                    PrimaryButton(
-                      text: "Select PDF Document",
-                      onPressed: _pickAndUploadPdf,
-                      icon: Icons.add_rounded,
-                      height: 45,
-                      width: double.infinity,
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  const Divider(color: Colors.white10),
-                  const SizedBox(height: 16),
-                  const Text(
-                    "TRIPLE AI INSIGHTS",
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 2.0,
-                      color: _accentBlue,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _insightFeature(Icons.auto_awesome_rounded, "Summary"),
-                      _insightFeature(Icons.school_rounded, "Exam Prep"),
-                      _insightFeature(Icons.list_alt_rounded, "Chapters"),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _insightFeature(IconData icon, String label) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.white60, size: 14),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
       ],
     );
   }
@@ -785,12 +646,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (user == null) return const SizedBox.shrink();
 
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('pdfs')
-          .where('userId', isEqualTo: user!.uid)
-          .orderBy('uploadedAt', descending: true)
-          .limit(1)
-          .snapshots(),
+      stream: _pdfRepo.getLatestPdfStream(user!.uid),
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const SizedBox.shrink();
@@ -817,11 +673,7 @@ class _HomeScreenState extends State<HomeScreen>
     final searchProvider = context.watch<SearchFilterProvider>();
 
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('pdfs')
-          .where('userId', isEqualTo: user.uid)
-          .orderBy('uploadedAt', descending: true)
-          .snapshots(),
+      stream: _pdfRepo.getUserPdfsStream(user.uid),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return SliverToBoxAdapter(
@@ -1027,6 +879,12 @@ class _HomeScreenState extends State<HomeScreen>
                           );
                         }),
                         _actionIconBtn(
+                          Icons.highlight_rounded,
+                          "Study",
+                          () => _openHighlightViewer(docId, fileName, data['fileUrl']),
+                          color: const Color(0xFFF59E0B),
+                        ),
+                        _actionIconBtn(
                           Icons.drive_file_rename_outline_rounded,
                           "Rename",
                           () => _renamePdf(docId, fileName),
@@ -1152,11 +1010,10 @@ class SummaryView extends StatelessWidget {
     final summaryProvider = context.watch<SummaryProvider>();
     final cachedData = summaryProvider.getCachedSummary(pdfId);
 
+    final summaryRepo = SummaryRepository();
+
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('summaries')
-          .where('pdfId', isEqualTo: pdfId)
-          .snapshots(),
+      stream: summaryRepo.getSummariesStreamByPdfId(pdfId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting &&
             cachedData == null) {

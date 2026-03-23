@@ -15,7 +15,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
-version: 1.0.6+6
+version: 1.0.9+9
 
 environment:
   sdk: ^3.10.8
@@ -55,6 +55,11 @@ dependencies:
   cloud_functions: ^6.0.6
   speech_to_text: ^7.0.0
   flutter_tts: ^4.2.0
+  video_player: ^2.11.1
+  url_launcher: ^6.3.2
+  image_picker: ^1.2.1
+  google_generative_ai: ^0.4.7
+  flutter_dotenv: ^6.0.0
 
 dev_dependencies:
   flutter_test:
@@ -68,6 +73,9 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.4
+  fake_cloud_firestore: ^4.0.2+1
+  mockito: ^5.6.3
+  firebase_storage_mocks: ^0.8.0+1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -83,6 +91,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/images/
+    - assets/videos/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

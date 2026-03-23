@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:pdify/widgets/glass_card.dart';
 import 'package:pdify/widgets/primary_button.dart';
 import 'package:pdify/widgets/mesh_background_scaffold.dart';
@@ -205,7 +206,8 @@ class _LoginScreenState extends State<LoginScreen>
                         controller: _tabController,
                         labelColor: Colors.white,
                         unselectedLabelColor: Colors.grey,
-                        indicatorColor: theme.primaryColor,
+                        dividerColor: Colors.transparent, // Remove the default black line
+                        indicatorColor: const Color(0xFF3B82F6), // Accent Blue
                         indicatorSize: TabBarIndicatorSize.label,
                         indicatorWeight: 3,
                         labelStyle: const TextStyle(
@@ -228,9 +230,9 @@ class _LoginScreenState extends State<LoginScreen>
                       decoration: InputDecoration(
                         labelText: "Email",
                         labelStyle: TextStyle(color: theme.hintColor),
-                        prefixIcon: Icon(
+                        prefixIcon: const Icon(
                           Icons.email_outlined,
-                          color: theme.primaryColor,
+                          color: Color(0xFF3B82F6),
                         ),
                         filled: true,
                         fillColor: theme.inputDecorationTheme.fillColor,
@@ -251,9 +253,9 @@ class _LoginScreenState extends State<LoginScreen>
                       decoration: InputDecoration(
                         labelText: "Password",
                         labelStyle: TextStyle(color: theme.hintColor),
-                        prefixIcon: Icon(
+                        prefixIcon: const Icon(
                           Icons.lock_outline,
-                          color: theme.primaryColor,
+                          color: Color(0xFF3B82F6),
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -318,17 +320,12 @@ class _LoginScreenState extends State<LoginScreen>
 
                       const SizedBox(height: 24),
 
-                      // Google Sign In
                       OutlinedButton(
                         onPressed: _signInWithGoogle,
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: theme.brightness == Brightness.dark 
-                              ? Colors.white.withOpacity(0.05) 
-                              : Colors.white,
-                          side: BorderSide(
-                            color: theme.dividerColor.withOpacity(0.2),
-                          ),
+                          backgroundColor: Colors.white,
+                          side: BorderSide.none,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -355,10 +352,10 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ),
                             const SizedBox(width: 12),
-                            Text(
+                            const Text(
                               "Continue with Google",
                               style: TextStyle(
-                                color: theme.textTheme.bodyLarge?.color,
+                                color: Colors.black,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -435,8 +432,8 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                               TextSpan(
                                 text: _isLogin ? "Sign up" : "Log in",
-                                style: TextStyle(
-                                  color: theme.primaryColor,
+                                style: const TextStyle(
+                                  color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -455,19 +452,19 @@ class _LoginScreenState extends State<LoginScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    "Privacy Policy",
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    "Terms of Service",
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
-                      decoration: TextDecoration.underline,
+                  InkWell(
+                    onTap: () async {
+                      final Uri url = Uri.parse('https://vrbharat.github.io/PDify-Policy/');
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url);
+                      }
+                    },
+                    child: Text(
+                      "Privacy Policy",
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.grey,
+                        decoration: TextDecoration.underline,
+                      ),
                     ),
                   ),
                 ],

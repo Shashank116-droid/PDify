@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:pdify/providers/theme_provider.dart';
 import 'package:pdify/widgets/primary_button.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pdify/main.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -11,7 +12,13 @@ class AppDrawer extends StatelessWidget {
   Future<void> _signOut(BuildContext context) async {
     try {
       await FirebaseAuth.instance.signOut();
-      // AuthWrapper in main.dart handles navigation
+      if (context.mounted) {
+        // Clear the stack and restart from AuthWrapper
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const AuthWrapper()),
+          (route) => false,
+        );
+      }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

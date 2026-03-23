@@ -45,6 +45,12 @@
 		<true/>
 		<key>UIApplicationSupportsIndirectInputEvents</key>
 		<true/>
+		<key>NSCameraUsageDescription</key>
+		<string>This app needs camera access to take photos of documents for OCR text extraction.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>This app needs access to your photo library to select document images for OCR text extraction.</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>This app needs microphone access for voice-to-text features.</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>

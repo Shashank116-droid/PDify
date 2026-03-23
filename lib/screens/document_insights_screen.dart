@@ -4,9 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:pdify/providers/summary_provider.dart';
-import 'package:provider/provider.dart';
 import 'package:pdify/services/export_service.dart';
 import 'package:pdify/services/ad_service.dart';
+import 'package:pdify/repositories/pdf_repository.dart';
+import 'package:pdify/repositories/summary_repository.dart';
+import 'package:pdify/widgets/definition_card.dart';
+import 'package:pdify/widgets/qa_card.dart';
+import 'package:provider/provider.dart';
 
 class DocumentInsightsScreen extends StatefulWidget {
   final String pdfId;
@@ -20,6 +24,9 @@ class DocumentInsightsScreen extends StatefulWidget {
 class _DocumentInsightsScreenState extends State<DocumentInsightsScreen>
     with SingleTickerProviderStateMixin {
   int _selectedModeIndex = 1; // Exam Mode selected by default
+
+  final PdfRepository _pdfRepo = PdfRepository();
+  final SummaryRepository _summaryRepo = SummaryRepository();
 
   final List<String> _modes = [
     'Standard\nSummary',
@@ -68,14 +75,11 @@ class _DocumentInsightsScreenState extends State<DocumentInsightsScreen>
                 // App Bar
                 SliverToBoxAdapter(child: _buildAppBar(theme)),
 
-                StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('summaries')
-                      .where('pdfId', isEqualTo: widget.pdfId)
-                      .snapshots(),
+                FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _summaryRepo.getSummariesByPdfIdWithCache(widget.pdfId),
                   builder: (context, snapshot) {
                     debugPrint(
-                      "DocumentInsightsScreen: StreamBuilder snapshot state: ${snapshot.connectionState}, hasData: ${snapshot.hasData}, pdfId: ${widget.pdfId}",
+                      "DocumentInsightsScreen: FutureBuilder snapshot state: ${snapshot.connectionState}, hasData: ${snapshot.hasData}, pdfId: ${widget.pdfId}",
                     );
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const SliverFillRemaining(
@@ -85,15 +89,12 @@ class _DocumentInsightsScreenState extends State<DocumentInsightsScreen>
                       );
                     }
 
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
                       debugPrint(
-                        "DocumentInsightsScreen: No docs in StreamBuilder. Trying FutureBuilder fallback for docId.",
+                        "DocumentInsightsScreen: No docs in cache/firestore. Trying FutureBuilder fallback for docId.",
                       );
                       return FutureBuilder<DocumentSnapshot>(
-                        future: FirebaseFirestore.instance
-                            .collection('summaries')
-                            .doc(widget.pdfId)
-                            .get(),
+                        future: _summaryRepo.getSummaryFuture(widget.pdfId),
                         builder: (context, docSnapshot) {
                           debugPrint(
                             "DocumentInsightsScreen: FutureBuilder fallback state: ${docSnapshot.connectionState}, exists: ${docSnapshot.data?.exists}, id: ${widget.pdfId}",
@@ -128,7 +129,7 @@ class _DocumentInsightsScreenState extends State<DocumentInsightsScreen>
                     }
 
                     debugPrint(
-                      "DocumentInsightsScreen: Found ${snapshot.data!.docs.length} summary docs for pdfId: ${widget.pdfId}",
+                      "DocumentInsightsScreen: Found ${snapshot.data!.length} summary docs for pdfId: ${widget.pdfId}",
                     );
                     // Aggregated results for multiple summary docs
                     Map<String, dynamic>? fullData;
@@ -136,8 +137,7 @@ class _DocumentInsightsScreenState extends State<DocumentInsightsScreen>
                     Map<String, dynamic>? chapterData;
                     Map<String, dynamic>? legacyData;
 
-                    for (var doc in snapshot.data!.docs) {
-                      final data = doc.data() as Map<String, dynamic>;
+                    for (var data in snapshot.data!) {
                       final type = data['type'];
                       if (type == 'full')
                         fullData = data;
@@ -149,12 +149,8 @@ class _DocumentInsightsScreenState extends State<DocumentInsightsScreen>
                         legacyData = data;
                     }
 
-                    // Attempt fetching the main PDF document to get accurate page count and file name
                     return FutureBuilder<DocumentSnapshot>(
-                      future: FirebaseFirestore.instance
-                          .collection('pdfs')
-                          .doc(widget.pdfId)
-                          .get(),
+                      future: _pdfRepo.getPdfFuture(widget.pdfId),
                       builder: (context, pdfSnapshot) {
                         final pdfData =
                             pdfSnapshot.data?.data() as Map<String, dynamic>? ??
@@ -373,10 +369,10 @@ class _DocumentInsightsScreenState extends State<DocumentInsightsScreen>
             ...((exam['keyDefinitions'] ?? exam['definitions'] ?? [])
                     as List<dynamic>)
                 .map(
-                  (d) => _buildDefinitionCard(
-                    d['term'] ?? d['word'] ?? "",
-                    d['definition'] ?? d['meaning'] ?? "",
-                    cardBg,
+                  (d) => DefinitionCard(
+                    term: d['term'] ?? d['word'] ?? "",
+                    definition: d['definition'] ?? d['meaning'] ?? "",
+                    cardBg: cardBg,
                   ),
                 ),
 
@@ -396,7 +392,7 @@ class _DocumentInsightsScreenState extends State<DocumentInsightsScreen>
             ) {
               final questionsList =
                   ((exam['qa'] ?? exam['questions'] ?? []) as List<dynamic>);
-              return _buildQACard(
+              return QACard(
                 questionNumber: (questionsList.indexOf(q) + 1)
                     .toString()
                     .padLeft(2, '0'),
@@ -615,183 +611,6 @@ class _DocumentInsightsScreenState extends State<DocumentInsightsScreen>
               ),
             );
           }),
-        ),
-      ),
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════════
-  // DEFINITION CARD
-  // ══════════════════════════════════════════════════════════════════
-  Widget _buildDefinitionCard(String term, String definition, Color cardBg) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.06)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              term,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              definition,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.55),
-                fontSize: 13,
-                height: 1.55,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════════
-  // Q&A CARD
-  // ══════════════════════════════════════════════════════════════════
-  Widget _buildQACard({
-    required String questionNumber,
-    required String question,
-    required String? answer,
-    required bool showAnswer,
-    required Color cardBg,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.06)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Question label
-            Text(
-              'QUESTION $questionNumber',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-                color: const Color(0xFF60A5FA).withOpacity(0.7),
-              ),
-            ),
-            const SizedBox(height: 10),
-            // Question text
-            Text(
-              question,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                height: 1.4,
-              ),
-            ),
-            if (showAnswer && answer != null) ...[
-              const SizedBox(height: 16),
-              // Answer bubble
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.04),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withOpacity(0.06)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // AI avatar
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            const Color(0xFF7C3AED).withOpacity(0.5),
-                            const Color(0xFF3B82F6).withOpacity(0.5),
-                          ],
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.auto_awesome_rounded,
-                        color: Colors.white,
-                        size: 14,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildMarkdownText(
-                        answer ?? "",
-                        TextStyle(
-                          color: Colors.white.withOpacity(0.6),
-                          fontSize: 13,
-                          height: 1.55,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (!showAnswer) ...[
-              const SizedBox(height: 16),
-              // Reveal answer button
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withOpacity(0.08)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.auto_awesome_rounded,
-                        color: Color(0xFFFBBF24),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Tap to reveal suggested answer',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: Colors.white.withOpacity(0.4),
-                        size: 18,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ],
         ),
       ),
     );

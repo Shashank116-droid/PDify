@@ -20,3 +20,5 @@
 # Handle other common Flutter/Android minification issues
 -keep class com.google.firebase.** { *; }
 -dontwarn com.google.firebase.**
+
+

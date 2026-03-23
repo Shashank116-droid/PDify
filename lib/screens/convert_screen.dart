@@ -13,6 +13,7 @@ import 'package:pdify/services/ad_service.dart';
 import 'package:pdify/services/conversion_service.dart';
 import 'package:pdify/widgets/premium_header.dart';
 import 'package:pdify/screens/profile_screen.dart';
+import 'package:pdify/screens/ocr_screen.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdfx/pdfx.dart' as pdfx;
@@ -32,6 +33,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
   final User? user = FirebaseAuth.instance.currentUser;
   bool _isProcessing = false;
   String? _statusMessage;
+  double? _progressValue;
   bool _isSuccess = false;
   List<String> _shareablePaths = [];
   
@@ -482,6 +484,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
       setState(() {
         _isProcessing = true;
+        _progressValue = null;
         _statusMessage = "Compressing PDF...";
         _isSuccess = false;
       });
@@ -541,6 +544,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
       setState(() {
         _isProcessing = true;
+        _progressValue = null;
         _statusMessage = "Compressing ${result.files.length} image(s)...";
         _isSuccess = false;
       });
@@ -611,6 +615,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
       setState(() {
         _isProcessing = true;
+        _progressValue = null;
         _statusMessage = "Creating PDF...";
         _isSuccess = false;
       });
@@ -692,6 +697,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
       setState(() {
         _isProcessing = true;
+        _progressValue = null;
         _statusMessage = "Extracting images...";
         _isSuccess = false;
       });
@@ -769,6 +775,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
       setState(() {
         _isProcessing = true;
+        _progressValue = null;
         _statusMessage = "Converting Word to PDF...";
         _isSuccess = false;
       });
@@ -778,6 +785,14 @@ class _ConvertScreenState extends State<ConvertScreen> {
         inputFilePath: filePath,
         outputDir: outputDir.path,
         newFileName: fileName,
+        onProgress: (status, progress) {
+          if (mounted) {
+            setState(() {
+              _statusMessage = status;
+              _progressValue = progress;
+            });
+          }
+        },
       );
 
       setState(() {
@@ -830,6 +845,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
       setState(() {
         _isProcessing = true;
+        _progressValue = null;
         _statusMessage = "Converting PowerPoint to PDF...";
         _isSuccess = false;
       });
@@ -839,6 +855,14 @@ class _ConvertScreenState extends State<ConvertScreen> {
         inputFilePath: filePath,
         outputDir: outputDir.path,
         newFileName: fileName,
+        onProgress: (status, progress) {
+          if (mounted) {
+            setState(() {
+              _statusMessage = status;
+              _progressValue = progress;
+            });
+          }
+        },
       );
 
       setState(() {
@@ -891,6 +915,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
       setState(() {
         _isProcessing = true;
+        _progressValue = null;
         _statusMessage = "Converting PDF to Word...";
         _isSuccess = false;
       });
@@ -901,6 +926,14 @@ class _ConvertScreenState extends State<ConvertScreen> {
         outputDir: outputDir.path,
         outputFormat: 'docx',
         newFileName: fileName,
+        onProgress: (status, progress) {
+          if (mounted) {
+            setState(() {
+              _statusMessage = status;
+              _progressValue = progress;
+            });
+          }
+        },
       );
 
       setState(() {
@@ -953,6 +986,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
       setState(() {
         _isProcessing = true;
+        _progressValue = null;
         _statusMessage = "Converting PDF to PowerPoint...";
         _isSuccess = false;
       });
@@ -963,6 +997,14 @@ class _ConvertScreenState extends State<ConvertScreen> {
         outputDir: outputDir.path,
         outputFormat: 'pptx',
         newFileName: fileName,
+        onProgress: (status, progress) {
+          if (mounted) {
+            setState(() {
+              _statusMessage = status;
+              _progressValue = progress;
+            });
+          }
+        },
       );
 
       setState(() {
@@ -1065,79 +1107,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
     // const color2 = Color(0xFFFF6B6B); // Coral Red
     // const color3 = Color(0xFF00D9FF); // Cyan
 
-    // Feature definitions
-    final features = [
-      _FeatureTile(
-        icon: Icons.merge_rounded,
-        title: 'Merge PDF',
-        description: 'Combine multiple PDFs into one',
-        color: const Color(0xFF3B82F6),
-        onTap: _isProcessing ? null : _mergePdf,
-      ),
-      _FeatureTile(
-        icon: Icons.call_split_rounded,
-        title: 'Split PDF',
-        description: 'Separate pages from a PDF',
-        color: const Color(0xFF10B981),
-        onTap: _isProcessing ? null : _splitPdf,
-      ),
-      _FeatureTile(
-        icon: Icons.compress_rounded,
-        title: 'Compress PDF',
-        description: 'Reduce PDF file size',
-        color: const Color(0xFFFF6B6B),
-        onTap: _isProcessing ? null : _compressPdf,
-      ),
-      _FeatureTile(
-        icon: Icons.photo_size_select_large_rounded,
-        title: 'Compress Image',
-        description: 'Compress JPG & PNG images',
-        color: const Color(0xFFF59E0B),
-        onTap: _isProcessing ? null : _compressImage,
-      ),
-      _FeatureTile(
-        icon: Icons.image_rounded,
-        title: 'Images to PDF',
-        description: 'Combine images into a PDF',
-        color: const Color(0xFF3B82F6),
-        onTap: _isProcessing ? null : _imagesToPdf,
-      ),
-      _FeatureTile(
-        icon: Icons.picture_as_pdf_rounded,
-        title: 'PDF to Images',
-        description: 'Extract pages as images',
-        color: const Color(0xFFEC4899),
-        onTap: _isProcessing ? null : _pdfToImages,
-      ),
-      _FeatureTile(
-        icon: Icons.description_rounded,
-        title: 'Word to PDF',
-        description: 'Convert DOCX to PDF',
-        color: const Color(0xFF2563EB),
-        onTap: _isProcessing ? null : _wordToPdf,
-      ),
-      _FeatureTile(
-        icon: Icons.slideshow_rounded,
-        title: 'PPT to PDF',
-        description: 'Convert PPTX to PDF',
-        color: const Color(0xFFDC2626),
-        onTap: _isProcessing ? null : _pptToPdf,
-      ),
-      _FeatureTile(
-        icon: Icons.article_rounded,
-        title: 'PDF to Word',
-        description: 'Convert PDF to DOCX',
-        color: const Color(0xFF0891B2),
-        onTap: _isProcessing ? null : _pdfToWord,
-      ),
-      _FeatureTile(
-        icon: Icons.present_to_all_rounded,
-        title: 'PDF to PPT',
-        description: 'Convert PDF to PPTX',
-        color: const Color(0xFFE11D48),
-        onTap: _isProcessing ? null : _pdfToPpt,
-      ),
-    ];
+    // Feature definitions removed as they are unused.
 
     return MeshBackgroundScaffold(
       showAppBar: false,
@@ -1171,53 +1141,58 @@ class _ConvertScreenState extends State<ConvertScreen> {
                 if (_isProcessing || _statusMessage != null)
                   SliverToBoxAdapter(child: _buildStatusCard(theme)),
 
-                // ── Conversion tool cards (Expanded) ──
+                // ── Conversion tool cards (All Compact) ──
                 SliverToBoxAdapter(
-                  child: _buildExpandedToolCard(
+                  child: _buildCompactToolCard(
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OcrScreen())),
+                    icon: Icons.document_scanner_rounded,
+                    iconBgColor: const Color(0xFF10B981).withOpacity(0.15),
+                    iconColor: const Color(0xFF34D399),
+                    title: 'Image to Text (OCR)',
+                    subtitle: 'Extract text from scanned documents or pictures automatically.',
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: _buildCompactToolCard(
                     onTap: _wordToPdf,
                     icon: Icons.description_rounded,
                     iconBgColor: const Color(0xFF3B82F6).withOpacity(0.15),
                     iconColor: const Color(0xFF60A5FA),
                     title: 'Word to PDF',
                     subtitle: 'Convert .docx to high-fidelity PDF documents.',
-                    showTryNow: true,
                   ),
                 ),
                 SliverToBoxAdapter(
-                  child: _buildExpandedToolCard(
+                  child: _buildCompactToolCard(
                     onTap: _pdfToWord,
                     icon: Icons.article_rounded,
                     iconBgColor: const Color(0xFF7C3AED).withOpacity(0.15),
                     iconColor: const Color(0xFFA78BFA),
                     title: 'PDF to Word',
                     subtitle: 'Extract text and layout from PDF to editable Word.',
-                    showTryNow: true,
                   ),
                 ),
                 SliverToBoxAdapter(
-                  child: _buildExpandedToolCard(
+                  child: _buildCompactToolCard(
                     onTap: _pdfToPpt,
                     icon: Icons.present_to_all_rounded,
                     iconBgColor: const Color(0xFFE11D48).withOpacity(0.15),
                     iconColor: const Color(0xFFF87171),
                     title: 'PDF to PPT',
-                    subtitle: 'Convert PDF to editable PowerPoint presentations.',
-                    showTryNow: true,
+                    subtitle: 'Convert PDF to PowerPoint presentations.',
                   ),
                 ),
                 SliverToBoxAdapter(
-                  child: _buildExpandedToolCard(
+                  child: _buildCompactToolCard(
                     onTap: _compressImage,
                     icon: Icons.photo_size_select_large_rounded,
                     iconBgColor: const Color(0xFFF59E0B).withOpacity(0.15),
                     iconColor: const Color(0xFFFCD34D),
                     title: 'Compress Image',
                     subtitle: 'Reduce JPG & PNG file sizes without losing quality.',
-                    showTryNow: true,
                   ),
                 ),
 
-                // ── Conversion tool cards (Compact) ──
                 SliverToBoxAdapter(
                   child: _buildCompactToolCard(
                     onTap: _mergePdf,
@@ -1333,86 +1308,6 @@ class _ConvertScreenState extends State<ConvertScreen> {
     );
   }
 
-  Widget _buildExpandedToolCard({
-    required VoidCallback onTap,
-    required IconData icon,
-    required Color iconBgColor,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    bool showTryNow = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withOpacity(0.08),
-                Colors.white.withOpacity(0.03),
-              ],
-            ),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(color: iconBgColor, borderRadius: BorderRadius.circular(18)),
-                          child: Icon(icon, color: iconColor, size: 28),
-                        ),
-                        if (showTryNow)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: _accentBlue.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(100),
-                              border: Border.all(color: _accentBlue.withOpacity(0.3)),
-                            ),
-                            child: const Text(
-                              'NEW',
-                              style: TextStyle(color: _accentBlue, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Text(title, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 8),
-                    Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14, height: 1.4)),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        const Text('Get Started', style: TextStyle(color: _accentBlue, fontWeight: FontWeight.w700, fontSize: 14)),
-                        const SizedBox(width: 6),
-                        const Icon(Icons.arrow_forward_rounded, color: _accentBlue, size: 16),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildStatusCard(ThemeData theme) {
     final statusColor = _isProcessing
@@ -1434,6 +1329,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
                     color: statusColor,
+                    value: _progressValue,
                   ),
                 )
               else
@@ -1455,6 +1351,18 @@ class _ConvertScreenState extends State<ConvertScreen> {
               ),
             ],
           ),
+          if (_isProcessing && _progressValue != null) ...[
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: _progressValue,
+                color: statusColor,
+                backgroundColor: statusColor.withOpacity(0.2),
+                minHeight: 8,
+              ),
+            ),
+          ],
           if (_isSuccess && _shareablePaths.isNotEmpty) ...[
             const SizedBox(height: 16),
             PrimaryButton(
@@ -1486,18 +1394,3 @@ class _ConvertScreenState extends State<ConvertScreen> {
   }
 }
 
-class _FeatureTile {
-  final IconData icon;
-  final String title;
-  final String description;
-  final Color color;
-  final VoidCallback? onTap;
-
-  const _FeatureTile({
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.color,
-    required this.onTap,
-  });
-}
