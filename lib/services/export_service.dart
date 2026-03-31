@@ -103,6 +103,74 @@ class ExportService {
     }
   }
 
+  /// Export Exam Notes (Syllabus/Manual Topics) to PDF
+  static Future<void> exportExamNotesToPdf({
+    required BuildContext context,
+    required String topics,
+    required String notesMarkdown,
+    required List<dynamic> questions,
+  }) async {
+    try {
+      final pdf = pw.Document();
+      final cleanNotes = _cleanMarkdown(notesMarkdown);
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(40),
+          header: (ctx) => _buildHeader(ctx, 'AI Exam Notes'),
+          footer: (ctx) => _buildFooter(ctx),
+          build: (ctx) => [
+            _buildTitle('Study Notes'),
+            pw.SizedBox(height: 8),
+            pw.Text(
+              'Topics: ${topics.length > 200 ? '${topics.substring(0, 200)}...' : topics}',
+              style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600, fontStyle: pw.FontStyle.italic),
+            ),
+            pw.SizedBox(height: 20),
+            
+            ..._buildTextParagraphs(cleanNotes),
+            
+            if (questions.isNotEmpty) ...[
+              pw.SizedBox(height: 30),
+              pw.Divider(color: PdfColors.grey300, thickness: 0.5),
+              pw.SizedBox(height: 20),
+              _buildTitle('Practice Q&A'),
+              pw.SizedBox(height: 16),
+              ...questions.asMap().entries.map((entry) {
+                final i = entry.key;
+                final item = entry.value;
+                return pw.Container(
+                  margin: const pw.EdgeInsets.only(bottom: 14),
+                  padding: const pw.EdgeInsets.all(10),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.grey200),
+                    borderRadius: pw.BorderRadius.circular(6),
+                    color: PdfColors.grey50,
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Q${i + 1}: ${item['question'] ?? item['q'] ?? ""}', 
+                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
+                      pw.SizedBox(height: 6),
+                      pw.Text('A: ${item['answer'] ?? item['a'] ?? ""}', 
+                        style: const pw.TextStyle(fontSize: 10, lineSpacing: 1.5)),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ],
+        ),
+      );
+
+      await _saveAndShare(pdf, 'ExamNotes_${DateTime.now().millisecondsSinceEpoch}', context);
+    } catch (e) {
+      _showError(context, e);
+    }
+  }
+
   /// Export Chapter Breakdown to PDF
   static Future<void> exportChaptersToPdf({
     required BuildContext context,

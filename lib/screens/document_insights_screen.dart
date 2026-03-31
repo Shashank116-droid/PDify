@@ -451,7 +451,6 @@ class _DocumentInsightsScreenState extends State<DocumentInsightsScreen>
             ),
         ],
 
-        _buildStudyReadiness(cardBg),
         const SizedBox(height: 100),
       ]),
     );
@@ -616,129 +615,7 @@ class _DocumentInsightsScreenState extends State<DocumentInsightsScreen>
     );
   }
 
-  // ══════════════════════════════════════════════════════════════════
-  // STUDY READINESS
-  // ══════════════════════════════════════════════════════════════════
-  Widget _buildStudyReadiness(Color cardBg) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF10B981).withOpacity(0.15),
-              const Color(0xFF10B981).withOpacity(0.05),
-            ],
-          ),
-          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'STUDY READINESS',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-                color: const Color(0xFF34D399).withOpacity(0.8),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                // Percentage
-                const Text(
-                  '84%',
-                  style: TextStyle(
-                    color: Color(0xFF34D399),
-                    fontSize: 36,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                const Text(
-                  'Accurate',
-                  style: TextStyle(
-                    color: Color(0xFF34D399),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                // Avatars
-                SizedBox(
-                  width: 90,
-                  height: 32,
-                  child: Stack(
-                    children: [
-                      _avatar(0, const Color(0xFF3B82F6), 'JD'),
-                      _avatar(22, const Color(0xFFEC4899), 'MK'),
-                      Positioned(
-                        left: 44,
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.15),
-                            border: Border.all(
-                              color: const Color(0xFF0B1120),
-                              width: 2,
-                            ),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              '+12',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _avatar(double left, Color color, String initials) {
-    return Positioned(
-      left: left,
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color,
-          border: Border.all(color: const Color(0xFF0B1120), width: 2),
-        ),
-        child: Center(
-          child: Text(
-            initials,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   // ══════════════════════════════════════════════════════════════════
   // BOTTOM NAVIGATION

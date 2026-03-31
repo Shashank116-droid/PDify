@@ -31,7 +31,10 @@ import 'package:pdfx/pdfx.dart';
 import 'package:pdify/repositories/pdf_repository.dart';
 import 'package:pdify/repositories/summary_repository.dart';
 import 'package:pdify/widgets/upload_card.dart';
+import 'package:pdify/widgets/exam_notes_card.dart';
 import 'package:pdify/screens/pdf_highlight_viewer_screen.dart';
+import 'package:pdify/repositories/exam_notes_repository.dart';
+import 'package:pdify/widgets/exam_note_tile.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
@@ -45,7 +48,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
-  final User? user = FirebaseAuth.instance.currentUser;
+  User? get user => FirebaseAuth.instance.currentUser;
   final TextEditingController _searchController = TextEditingController();
   bool _isUploading = false;
   bool _isDeleting = false;
@@ -54,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   final PdfRepository _pdfRepo = PdfRepository();
   final SummaryRepository _summaryRepo = SummaryRepository();
+  final ExamNotesRepository _notesRepo = ExamNotesRepository();
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -433,6 +437,12 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ),
                   const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                  const SliverToBoxAdapter(
+                    child: ExamNotesCard(),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                  SliverToBoxAdapter(child: _buildSavedNotesSection(theme, maxItems: 1)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
                   SliverToBoxAdapter(child: _buildLatestDocumentSection(theme)),
                   const SliverToBoxAdapter(child: SizedBox(height: 20)),
                   const SliverToBoxAdapter(
@@ -451,10 +461,13 @@ class _HomeScreenState extends State<HomeScreen>
                 ] else ...[
                   SliverToBoxAdapter(child: _buildDashboardSearchBar(theme)),
                   SliverToBoxAdapter(child: _buildFolderChips(theme)),
+                  // Section 1: Saved Study Notes
+                  SliverToBoxAdapter(child: _buildSavedNotesSection(theme)),
+                  // Section 2: Document Summaries
                   SliverToBoxAdapter(
                     child: _buildSectionHeader(
-                      'YOUR TIMELINE',
-                      'Recent Documents',
+                      'DOCUMENT SUMMARIES',
+                      'Uploaded PDFs',
                       null,
                     ),
                   ),
@@ -469,6 +482,121 @@ class _HomeScreenState extends State<HomeScreen>
               : null,
         ),
       ],
+    );
+  }
+
+  Widget _buildSavedNotesSection(ThemeData theme, {int maxItems = 5}) {
+    if (user == null) return const SizedBox.shrink();
+
+    // Watch providers at widget level so changes trigger rebuilds
+    final searchProvider = context.watch<SearchFilterProvider>();
+    final bookmarkProvider = context.watch<BookmarkProvider>();
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: _notesRepo.getExamNotesStream(user!.uid),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          debugPrint('⚠️ Exam Notes Stream Error: ${snapshot.error}');
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader(
+                'SAVED STUDY NOTES',
+                'Syllabus & Topics',
+                null,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.amber.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.amber.withOpacity(0.7), size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Firestore index required. Check debug console for the creation link.',
+                          style: TextStyle(color: Colors.amber.withOpacity(0.8), fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        var filteredNotes = snapshot.data!.docs.toList();
+        
+        // Apply text search filter to study notes
+        if (searchProvider.searchQuery.isNotEmpty) {
+          final query = searchProvider.searchQuery.toLowerCase();
+          filteredNotes = filteredNotes.where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final topics = (data['topics'] ?? '').toString().toLowerCase();
+            final notesContent = (data['notesMarkdown'] ?? '').toString().toLowerCase();
+            return topics.contains(query) || notesContent.contains(query);
+          }).toList();
+        }
+
+        // Apply bookmark filter to study notes
+        if (searchProvider.filterOnlyBookmarked) {
+          filteredNotes = filteredNotes.where((doc) => bookmarkProvider.isBookmarked(doc.id)).toList();
+        }
+
+        final notes = filteredNotes;
+
+        // Hide section if no matching notes found
+        if (notes.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader(
+              'SAVED STUDY NOTES',
+              'Syllabus & Topics',
+              null,
+            ),
+            ...notes.take(maxItems).map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return ExamNoteTile(
+                noteId: doc.id,
+                topics: data['topics'] ?? 'Untitled Note',
+                notesMarkdown: data['notesMarkdown'] ?? '',
+                questions: (data['questions'] as List<dynamic>?)
+                        ?.cast<Map<String, dynamic>>() ??
+                    [],
+                createdAt: (data['createdAt'] as Timestamp?)?.toDate() ??
+                    DateTime.now(),
+                onDelete: () => _notesRepo.deleteExamNote(doc.id),
+              );
+            }),
+            if (notes.length > maxItems)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: TextButton(
+                  onPressed: () {
+                    // TODO: Navigate to See All Exam Notes
+                  },
+                  child: Text(
+                    'View all ${notes.length} notes',
+                    style: const TextStyle(color: _accentBlue),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -518,15 +646,32 @@ class _HomeScreenState extends State<HomeScreen>
             hintText: 'Search your library...',
             border: InputBorder.none,
             hintStyle: TextStyle(color: theme.hintColor.withOpacity(0.5)),
-            suffixIcon: searchProvider.searchQuery.isNotEmpty
-                ? IconButton(
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    searchProvider.filterOnlyBookmarked
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_outline_rounded,
+                    size: 20,
+                    color: searchProvider.filterOnlyBookmarked
+                        ? _accentBlue
+                        : theme.hintColor.withOpacity(0.5),
+                  ),
+                  onPressed: () => searchProvider.toggleBookmarkFilter(),
+                  tooltip: 'Show Bookmarked Only',
+                ),
+                if (searchProvider.searchQuery.isNotEmpty)
+                  IconButton(
                     icon: const Icon(Icons.close_rounded, size: 18),
                     onPressed: () {
                       _searchController.clear();
                       searchProvider.clearSearch();
                     },
-                  )
-                : null,
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -659,7 +804,15 @@ class _HomeScreenState extends State<HomeScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSectionHeader('LATEST INSIGHT', 'Current Document', null),
-            _buildDashboardPdfItem(doc.id, data, theme),
+            PdfDashboardItem(
+              docId: doc.id,
+              data: data,
+              theme: theme,
+              onRename: () => _renamePdf(doc.id, data['fileName'] ?? 'Document'),
+              onDelete: () => _deleteSinglePdf(doc.id, data['storagePath']),
+              onRetry: () => _retryPdf(doc.id, data),
+              openHighlightViewer: (url) => _openHighlightViewer(doc.id, data['fileName'] ?? 'Document', url),
+            ),
           ],
         );
       },
@@ -725,10 +878,17 @@ class _HomeScreenState extends State<HomeScreen>
         return SliverList(
           delegate: SliverChildBuilderDelegate((context, index) {
             final doc = docs[index];
-            return _buildDashboardPdfItem(
-              doc.id,
-              doc.data() as Map<String, dynamic>,
-              theme,
+            final data = doc.data() as Map<String, dynamic>;
+            final docId = doc.id;
+            
+            return PdfDashboardItem(
+              docId: docId,
+              data: data,
+              theme: theme,
+              onRename: () => _renamePdf(docId, data['fileName'] ?? 'Document'),
+              onDelete: () => _deleteSinglePdf(docId, data['storagePath']),
+              onRetry: () => _retryPdf(docId, data),
+              openHighlightViewer: (url) => _openHighlightViewer(docId, data['fileName'] ?? 'Document', url),
             );
           }, childCount: docs.length),
         );
@@ -736,192 +896,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildDashboardPdfItem(
-    String docId,
-    Map<String, dynamic> data,
-    ThemeData theme,
-  ) {
-    String status = data['status'] ?? 'unknown';
-    String fileName = data['fileName'] ?? 'Unknown File';
-    final bookmarkProvider = context.watch<BookmarkProvider>();
-    final isBookmarked = bookmarkProvider.isBookmarked(docId);
-    final folderProvider = context.watch<FolderProvider>();
-    final assignedFolder = folderProvider.getFolder(docId);
 
-    Color statusColor = status == 'completed'
-        ? _emerald
-        : (status == 'processing' ? _amber : Colors.redAccent);
-    String statusLabel = status == 'completed'
-        ? 'READY'
-        : (status == 'processing' ? 'PROCESSING' : 'ERROR');
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      child: GlassCard(
-        borderRadius: 20,
-        padding: EdgeInsets.zero,
-        child: ExpansionTileTheme(
-          data: ExpansionTileThemeData(
-            shape: const Border(),
-            collapsedShape: const Border(),
-            iconColor: theme.brightness == Brightness.dark
-                ? Colors.white54
-                : Colors.black54,
-          ),
-          child: ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
-            ),
-            leading: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: status == 'completed'
-                    ? _accentBlue.withOpacity(0.1)
-                    : Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                status == 'completed'
-                    ? Icons.check_circle_rounded
-                    : (status == 'processing'
-                          ? Icons.sync_rounded
-                          : Icons.error_outline_rounded),
-                color: statusColor,
-                size: 24,
-              ),
-            ),
-            title: Text(
-              fileName,
-              style: TextStyle(
-                color: theme.brightness == Brightness.dark
-                    ? Colors.white
-                    : Colors.black87,
-                fontWeight: FontWeight.w700,
-                fontSize: 15,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Row(
-              children: [
-                if (assignedFolder != null) ...[
-                  Icon(
-                    Icons.folder_open_rounded,
-                    size: 12,
-                    color: _accentBlue.withOpacity(0.7),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    assignedFolder,
-                    style: TextStyle(
-                      color: _accentBlue.withOpacity(0.7),
-                      fontSize: 11,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Text(
-                  statusLabel,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    isBookmarked
-                        ? Icons.bookmark_rounded
-                        : Icons.bookmark_outline_rounded,
-                    color: isBookmarked ? _accentBlue : Colors.white24,
-                    size: 20,
-                  ),
-                  onPressed: () => bookmarkProvider.toggleBookmark(docId),
-                ),
-                const Icon(Icons.expand_more_rounded, size: 20),
-              ],
-            ),
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _actionIconBtn(
-                          Icons.chat_bubble_outline_rounded,
-                          "Chat",
-                          () {
-                            final chatProvider = context.read<ChatProvider>();
-                            final navProvider = context
-                                .read<NavigationProvider>();
-
-                            chatProvider.setActiveContext(docId, fileName);
-                            navProvider.setIndex(2); // Switch to Chat tab
-                          },
-                        ),
-                        _actionIconBtn(Icons.insights_rounded, "Insights", () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  DocumentInsightsScreen(pdfId: docId),
-                            ),
-                          );
-                        }),
-                        _actionIconBtn(
-                          Icons.highlight_rounded,
-                          "Study",
-                          () => _openHighlightViewer(docId, fileName, data['fileUrl']),
-                          color: const Color(0xFFF59E0B),
-                        ),
-                        _actionIconBtn(
-                          Icons.drive_file_rename_outline_rounded,
-                          "Rename",
-                          () => _renamePdf(docId, fileName),
-                        ),
-                        _actionIconBtn(
-                          Icons.delete_outline_rounded,
-                          "Delete",
-                          () => _deleteSinglePdf(docId, data['storagePath']),
-                          color: Colors.redAccent,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    if (status == 'completed')
-                      _RewardedSummaryGate(pdfId: docId)
-                    else if (status == 'processing')
-                      const Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Center(
-                          child: CircularProgressIndicator(color: _accentBlue),
-                        ),
-                      )
-                    else
-                      TextButton.icon(
-                        onPressed: () => _retryPdf(docId, data),
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text("Retry Failed Process"),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _actionIconBtn(
     IconData icon,
@@ -929,14 +904,30 @@ class _HomeScreenState extends State<HomeScreen>
     VoidCallback onTap, {
     Color color = Colors.white54,
   }) {
-    return Column(
-      children: [
-        IconButton(
-          onPressed: onTap,
-          icon: Icon(icon, color: color, size: 22),
-        ),
-        Text(label, style: TextStyle(color: color, fontSize: 10)),
-      ],
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: color.withOpacity(0.8),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1452,6 +1443,262 @@ class _RewardedSummaryGateState extends State<_RewardedSummaryGate> {
           ),
         ),
       ],
+    );
+  }
+}
+class PdfDashboardItem extends StatefulWidget {
+  final String docId;
+  final Map<String, dynamic> data;
+  final ThemeData theme;
+  final VoidCallback onRename;
+  final VoidCallback onDelete;
+  final VoidCallback onRetry;
+  final Function(String) openHighlightViewer;
+
+  const PdfDashboardItem({
+    super.key,
+    required this.docId,
+    required this.data,
+    required this.theme,
+    required this.onRename,
+    required this.onDelete,
+    required this.onRetry,
+    required this.openHighlightViewer,
+  });
+
+  @override
+  State<PdfDashboardItem> createState() => _PdfDashboardItemState();
+}
+
+class _PdfDashboardItemState extends State<PdfDashboardItem> {
+  bool _isExpanded = false;
+
+  static const _accentBlue = Color(0xFF3B82F6);
+  static const _emerald = Color(0xFF10B981);
+  static const _amber = Color(0xFFFBBF24);
+
+  @override
+  Widget build(BuildContext context) {
+    String status = widget.data['status'] ?? 'unknown';
+    String fileName = widget.data['fileName'] ?? 'Unknown File';
+    final bookmarkProvider = context.watch<BookmarkProvider>();
+    final isBookmarked = bookmarkProvider.isBookmarked(widget.docId);
+    final folderProvider = context.watch<FolderProvider>();
+    final assignedFolder = folderProvider.getFolder(widget.docId);
+
+    Color statusColor = status == 'completed'
+        ? _emerald
+        : (status == 'processing' ? _amber : Colors.redAccent);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      child: GlassCard(
+        borderRadius: 20,
+        padding: EdgeInsets.zero,
+        child: ExpansionTileTheme(
+          data: ExpansionTileThemeData(
+            shape: const Border(),
+            collapsedShape: const Border(),
+            iconColor: widget.theme.brightness == Brightness.dark
+                ? Colors.white54
+                : Colors.black54,
+          ),
+          child: ExpansionTile(
+            onExpansionChanged: (expanded) =>
+                setState(() => _isExpanded = expanded),
+            tilePadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
+            leading: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: status == 'completed'
+                    ? _accentBlue.withOpacity(0.1)
+                    : Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                status == 'completed'
+                    ? Icons.check_circle_rounded
+                    : (status == 'processing'
+                        ? Icons.sync_rounded
+                        : Icons.error_outline_rounded),
+                color: statusColor,
+                size: 24,
+              ),
+            ),
+            title: Text(
+              fileName,
+              style: TextStyle(
+                color: widget.theme.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black87,
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Row(
+              children: [
+                if (assignedFolder != null) ...[
+                  Icon(
+                    Icons.folder_open_rounded,
+                    size: 12,
+                    color: _accentBlue.withOpacity(0.7),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    assignedFolder,
+                    style: TextStyle(
+                      color: _accentBlue.withOpacity(0.7),
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Text(
+                  status == 'completed'
+                      ? 'READY'
+                      : (status == 'processing' ? 'PROCESSING' : 'ERROR'),
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    isBookmarked
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_outline_rounded,
+                    color: isBookmarked ? _accentBlue : Colors.white24,
+                    size: 20,
+                  ),
+                  onPressed: () =>
+                      bookmarkProvider.toggleBookmark(widget.docId),
+                ),
+                AnimatedRotation(
+                  turns: _isExpanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: const Icon(Icons.expand_more_rounded, size: 20),
+                ),
+              ],
+            ),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _actionIconBtn(
+                          Icons.chat_bubble_outline_rounded,
+                          "Chat",
+                          () {
+                            final chatProvider = context.read<ChatProvider>();
+                            final navProvider =
+                                context.read<NavigationProvider>();
+
+                            chatProvider.setActiveContext(
+                                widget.docId, fileName);
+                            navProvider.setIndex(2); // Switch to Chat tab
+                          },
+                        ),
+                        _actionIconBtn(Icons.insights_rounded, "Insights", () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  DocumentInsightsScreen(pdfId: widget.docId),
+                            ),
+                          );
+                        }),
+                        _actionIconBtn(
+                          Icons.highlight_rounded,
+                          "Study",
+                          () => widget.openHighlightViewer(
+                              widget.data['fileUrl']),
+                          color: const Color(0xFFF59E0B),
+                        ),
+                        _actionIconBtn(
+                          Icons.drive_file_rename_outline_rounded,
+                          "Rename",
+                          widget.onRename,
+                        ),
+                        _actionIconBtn(
+                          Icons.delete_outline_rounded,
+                          "Delete",
+                          widget.onDelete,
+                          color: Colors.redAccent,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    if (status == 'completed')
+                       _RewardedSummaryGate(pdfId: widget.docId)
+                    else if (status == 'processing')
+                      const Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Center(
+                          child: CircularProgressIndicator(color: _accentBlue),
+                        ),
+                      )
+                    else
+                      TextButton.icon(
+                        onPressed: widget.onRetry,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text("Retry Failed Process"),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _actionIconBtn(
+    IconData icon,
+    String label,
+    VoidCallback onTap, {
+    Color color = Colors.white54,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: color.withOpacity(0.8),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
