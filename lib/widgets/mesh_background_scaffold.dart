@@ -23,9 +23,9 @@ class MeshBackgroundScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const color1 = Color(0xFF7C3AED);
-    const color2 = Color(0xFFFF6B6B);
-    const color3 = Color(0xFF00D9FF);
+    const color1 = Color(0xFF3B82F6); // Vibrant Blue
+    const color2 = Color(0xFF1E1B4B); // Deep Purple
+    const color3 = Color(0xFF00D9FF); // Teal/Cyan
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -40,7 +40,7 @@ class MeshBackgroundScaffold extends StatelessWidget {
                         if (title == 'Tools') ...[
                           const Icon(
                             Icons.transform_rounded,
-                            color: Color(0xFF7C3AED),
+                            color: Color(0xFF3B82F6),
                           ),
                           const SizedBox(width: 8),
                         ],
@@ -48,7 +48,7 @@ class MeshBackgroundScaffold extends StatelessWidget {
                           title!,
                           style: theme.textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF7C3AED),
+                            color: const Color(0xFF3B82F6),
                             letterSpacing: -0.5,
                           ),
                         ),
@@ -62,31 +62,45 @@ class MeshBackgroundScaffold extends StatelessWidget {
               iconTheme: IconThemeData(
                 color: theme.brightness == Brightness.dark
                     ? Colors.white
-                    : const Color(0xFF7C3AED),
+                    : const Color(0xFF3B82F6),
               ),
             )
           : null,
       body: Stack(
         children: [
           // --- Gradient Mesh Background ---
-          Positioned(top: -80, right: -60, child: _buildMeshBlob(color1, 280)),
-          Positioned(
-            bottom: 100,
-            left: -60,
-            child: _buildMeshBlob(color2, 300),
-          ),
-          Positioned(
-            bottom: -50,
-            right: -40,
-            child: _buildMeshBlob(color3, 250),
-          ),
+          if (theme.brightness == Brightness.dark) ...[
+            Positioned(top: -100, right: -100, child: _buildMeshBlob(color1, 400)),
+            Positioned(
+              bottom: 100,
+              left: -100,
+              child: _buildMeshBlob(color2, 500),
+            ),
+            Positioned(
+              bottom: -50,
+              right: -50,
+              child: _buildMeshBlob(color3, 300),
+            ),
+          ] else ...[
+            Positioned(top: -80, right: -60, child: _buildMeshBlob(color1, 280)),
+            Positioned(
+              bottom: 100,
+              left: -60,
+              child: _buildMeshBlob(color2, 300),
+            ),
+            Positioned(
+              bottom: -50,
+              right: -40,
+              child: _buildMeshBlob(color3, 250),
+            ),
+          ],
 
           // Blur overlay
           Positioned.fill(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+              filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
               child: Container(
-                color: (theme.scaffoldBackgroundColor).withValues(alpha: 0.3),
+                color: (backgroundColor ?? theme.scaffoldBackgroundColor).withOpacity(0.6),
               ),
             ),
           ),
@@ -107,7 +121,7 @@ class MeshBackgroundScaffold extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: RadialGradient(
-          colors: [color.withValues(alpha: 0.6), color.withValues(alpha: 0.0)],
+          colors: [color.withOpacity(0.6), color.withOpacity(0.0)],
         ),
       ),
     );

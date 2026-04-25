@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:pdify/widgets/glass_card.dart';
 import 'package:pdify/widgets/primary_button.dart';
 import 'package:pdify/widgets/mesh_background_scaffold.dart';
@@ -22,8 +23,7 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isPasswordVisible = false;
   String? _errorMessage;
 
-  // Design Tokens (Matches HomeScreen)
-  static const color1 = Color(0xFF7C3AED); // Vivid Purple
+  // No longer needed, using theme primary color
 
   late TabController _tabController;
 
@@ -67,6 +67,10 @@ class _LoginScreenState extends State<LoginScreen>
           password: _passwordController.text.trim(),
         );
       }
+      
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
     } on FirebaseAuthException catch (e) {
       setState(() {
         _errorMessage = e.message;
@@ -102,6 +106,10 @@ class _LoginScreenState extends State<LoginScreen>
         );
 
         await FirebaseAuth.instance.signInWithCredential(credential);
+        
+        if (mounted && Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
       }
     } catch (e) {
       setState(() {
@@ -155,12 +163,25 @@ class _LoginScreenState extends State<LoginScreen>
             children: [
               const SizedBox(height: 40),
 
+              // Logo
+              Center(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
               // App Title
               Text(
                 "PDify",
                 textAlign: TextAlign.center,
                 style: theme.textTheme.displaySmall?.copyWith(
-                  color: color1, // Vivid Purple
+                  color: Colors.white,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -1,
                 ),
@@ -183,9 +204,10 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                       child: TabBar(
                         controller: _tabController,
-                        labelColor: color1,
+                        labelColor: Colors.white,
                         unselectedLabelColor: Colors.grey,
-                        indicatorColor: color1,
+                        dividerColor: Colors.transparent, // Remove the default black line
+                        indicatorColor: const Color(0xFF3B82F6), // Accent Blue
                         indicatorSize: TabBarIndicatorSize.label,
                         indicatorWeight: 3,
                         labelStyle: const TextStyle(
@@ -203,73 +225,54 @@ class _LoginScreenState extends State<LoginScreen>
 
                     // Form Fields
                     TextField(
-                      style: const TextStyle(color: Colors.black),
+                      style: TextStyle(color: theme.textTheme.bodyLarge?.color),
                       controller: _emailController,
                       decoration: InputDecoration(
                         labelText: "Email",
-                        labelStyle: const TextStyle(color: Colors.black54),
+                        labelStyle: TextStyle(color: theme.hintColor),
                         prefixIcon: const Icon(
                           Icons.email_outlined,
-                          color: color1,
+                          color: Color(0xFF3B82F6),
                         ),
                         filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: Colors.grey.withValues(alpha: 0.1),
-                          ),
-                        ),
+                        fillColor: theme.inputDecorationTheme.fillColor,
+                        border: theme.inputDecorationTheme.border,
+                        enabledBorder: theme.inputDecorationTheme.enabledBorder,
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: color1, width: 2),
+                          borderSide: BorderSide(color: theme.primaryColor, width: 2),
                         ),
                       ),
                       keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 16),
                     TextField(
-                      style: const TextStyle(color: Colors.black),
+                      style: TextStyle(color: theme.textTheme.bodyLarge?.color),
                       controller: _passwordController,
                       obscureText: !_isPasswordVisible,
                       decoration: InputDecoration(
                         labelText: "Password",
-                        labelStyle: const TextStyle(color: Colors.black54),
+                        labelStyle: TextStyle(color: theme.hintColor),
                         prefixIcon: const Icon(
                           Icons.lock_outline,
-                          color: color1,
+                          color: Color(0xFF3B82F6),
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _isPasswordVisible
                                 ? Icons.visibility
                                 : Icons.visibility_off,
-                            color: Colors.grey,
+                            color: theme.hintColor,
                           ),
                           onPressed: () => setState(
                             () => _isPasswordVisible = !_isPasswordVisible,
                           ),
                         ),
                         filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: Colors.grey.withValues(alpha: 0.1),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: color1, width: 2),
-                        ),
+                        fillColor: theme.inputDecorationTheme.fillColor,
+                        border: theme.inputDecorationTheme.border,
+                        enabledBorder: theme.inputDecorationTheme.enabledBorder,
+                        focusedBorder: theme.inputDecorationTheme.focusedBorder,
                       ),
                     ),
 
@@ -295,7 +298,7 @@ class _LoginScreenState extends State<LoginScreen>
                         children: [
                           Expanded(
                             child: Divider(
-                              color: Colors.grey.withValues(alpha: 0.2),
+                              color: Colors.grey.withOpacity(0.2),
                             ),
                           ),
                           Padding(
@@ -303,13 +306,13 @@ class _LoginScreenState extends State<LoginScreen>
                             child: Text(
                               "or",
                               style: TextStyle(
-                                color: Colors.grey.withValues(alpha: 0.6),
+                                color: Colors.grey.withOpacity(0.6),
                               ),
                             ),
                           ),
                           Expanded(
                             child: Divider(
-                              color: Colors.grey.withValues(alpha: 0.2),
+                              color: Colors.grey.withOpacity(0.2),
                             ),
                           ),
                         ],
@@ -317,15 +320,12 @@ class _LoginScreenState extends State<LoginScreen>
 
                       const SizedBox(height: 24),
 
-                      // Google Sign In
                       OutlinedButton(
                         onPressed: _signInWithGoogle,
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           backgroundColor: Colors.white,
-                          side: BorderSide(
-                            color: Colors.grey.withValues(alpha: 0.2),
-                          ),
+                          side: BorderSide.none,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -344,15 +344,15 @@ class _LoginScreenState extends State<LoginScreen>
                                 height: 24,
                                 width: 24,
                                 errorBuilder: (context, error, stackTrace) =>
-                                    const Icon(
+                                    Icon(
                                       Icons.g_mobiledata,
                                       size: 32,
-                                      color: Colors.blue,
+                                      color: theme.primaryColor,
                                     ),
                               ),
                             ),
                             const SizedBox(width: 12),
-                            Text(
+                            const Text(
                               "Continue with Google",
                               style: TextStyle(
                                 color: Colors.black,
@@ -369,7 +369,7 @@ class _LoginScreenState extends State<LoginScreen>
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.error.withValues(alpha: 0.1),
+                          color: theme.colorScheme.error.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
@@ -398,14 +398,14 @@ class _LoginScreenState extends State<LoginScreen>
 
                     // Main Action Button
                     if (_isLoading)
-                      const Center(
-                        child: CircularProgressIndicator(color: color1),
+                      Center(
+                        child: CircularProgressIndicator(color: theme.primaryColor),
                       )
                     else
                       PrimaryButton(
                         text: _isLogin ? "Log in" : "Sign up",
                         onPressed: _submit,
-                        backgroundColor: color1,
+                        backgroundColor: theme.primaryColor,
                       ),
 
                     const SizedBox(height: 16),
@@ -422,7 +422,7 @@ class _LoginScreenState extends State<LoginScreen>
                               color:
                                   (theme.textTheme.bodyMedium?.color ??
                                           Colors.white)
-                                      .withValues(alpha: 0.7),
+                                      .withOpacity(0.7),
                             ),
                             children: [
                               TextSpan(
@@ -433,7 +433,7 @@ class _LoginScreenState extends State<LoginScreen>
                               TextSpan(
                                 text: _isLogin ? "Sign up" : "Log in",
                                 style: const TextStyle(
-                                  color: color1,
+                                  color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -452,19 +452,19 @@ class _LoginScreenState extends State<LoginScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    "Privacy Policy",
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    "Terms of Service",
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
-                      decoration: TextDecoration.underline,
+                  InkWell(
+                    onTap: () async {
+                      final Uri url = Uri.parse('https://vrbharat.github.io/PDify-Policy/');
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url);
+                      }
+                    },
+                    child: Text(
+                      "Privacy Policy",
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.grey,
+                        decoration: TextDecoration.underline,
+                      ),
                     ),
                   ),
                 ],

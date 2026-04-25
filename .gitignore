@@ -61,6 +61,11 @@ GoogleService-Info.plist
 # Environment Variables
 .env
 .env.*
+functions/.env
+
+# Temporary Development/Test Files
+test_gemini.dart
+*.txt
 
 # OS generated files
 Thumbs.db

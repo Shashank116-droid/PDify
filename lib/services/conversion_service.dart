@@ -17,12 +17,15 @@ class ConversionService {
     required String inputFilePath,
     required String outputDir,
     String? newFileName,
+    void Function(String status, double? progress)? onProgress,
   }) async {
     try {
       final file = File(inputFilePath);
       final fileName = path.basename(inputFilePath);
       final baseName =
           newFileName ?? path.basenameWithoutExtension(inputFilePath);
+
+      onProgress?.call("Preparing file for upload...", 0.1);
 
       final uri = Uri.parse('$_baseUrl/convert/to-pdf');
       final request = http.MultipartRequest('POST', uri);
@@ -34,16 +37,30 @@ class ConversionService {
         ),
       );
 
+      onProgress?.call("Uploading to conversion server...", 0.3);
       final response = await request.send().timeout(const Duration(minutes: 3));
 
       if (response.statusCode == 200) {
-        final bytes = await response.stream.toBytes();
-        // If the user provided a name, assume it might not have the extension
+        onProgress?.call("Conversion complete. Downloading...", 0.6);
+        final contentLength = response.contentLength ?? 0;
+        final bytes = <int>[];
+        int received = 0;
+        
+        await for (final chunk in response.stream) {
+          bytes.addAll(chunk);
+          received += chunk.length;
+          if (contentLength > 0) {
+            final p = 0.6 + (0.4 * (received / contentLength));
+            onProgress?.call("Downloading PDF...", p);
+          }
+        }
+        
         final nameWithExt = baseName.toLowerCase().endsWith('.pdf')
             ? baseName
             : '$baseName.pdf';
         final outputPath = '$outputDir/$nameWithExt';
         await File(outputPath).writeAsBytes(bytes);
+        onProgress?.call("Done!", 1.0);
         return outputPath;
       } else {
         final body = await response.stream.bytesToString();
@@ -62,12 +79,15 @@ class ConversionService {
     required String outputDir,
     required String outputFormat,
     String? newFileName,
+    void Function(String status, double? progress)? onProgress,
   }) async {
     try {
       final file = File(inputFilePath);
       final fileName = path.basename(inputFilePath);
       final baseName =
           newFileName ?? path.basenameWithoutExtension(inputFilePath);
+
+      onProgress?.call("Preparing file for upload...", 0.1);
 
       final uri = Uri.parse('$_baseUrl/convert/from-pdf');
       final request = http.MultipartRequest('POST', uri);
@@ -80,16 +100,30 @@ class ConversionService {
       );
       request.fields['format'] = outputFormat;
 
+      onProgress?.call("Uploading to conversion server...", 0.3);
       final response = await request.send().timeout(const Duration(minutes: 3));
 
       if (response.statusCode == 200) {
-        final bytes = await response.stream.toBytes();
-        // Check extension
+        onProgress?.call("Conversion complete. Downloading...", 0.6);
+        final contentLength = response.contentLength ?? 0;
+        final bytes = <int>[];
+        int received = 0;
+        
+        await for (final chunk in response.stream) {
+          bytes.addAll(chunk);
+          received += chunk.length;
+          if (contentLength > 0) {
+            final p = 0.6 + (0.4 * (received / contentLength));
+            onProgress?.call("Downloading file...", p);
+          }
+        }
+        
         final nameWithExt = baseName.toLowerCase().endsWith('.$outputFormat')
             ? baseName
             : '$baseName.$outputFormat';
         final outputPath = '$outputDir/$nameWithExt';
         await File(outputPath).writeAsBytes(bytes);
+        onProgress?.call("Done!", 1.0);
         return outputPath;
       } else {
         final body = await response.stream.bytesToString();

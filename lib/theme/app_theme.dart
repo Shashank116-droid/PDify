@@ -5,8 +5,9 @@ class AppTheme {
   AppTheme._();
 
   // Brand Colors
-  static const Color _primaryColor = Color(0xFF7C3AED); // Vivid Purple
-  static const Color _secondaryColor = Color(0xFFA78BFA); // Light Purple
+  static const Color _primaryColor = Color(0xFF3B82F6); // Vibrant Blue
+  static const Color _secondaryColor = Color(0xFF00D9FF); // Cyan/Teal
+  static const Color _successColor = Color(0xFF10B981); // Emerald
 
   // ─── Light Theme ───────────────────────────────────────────────
   static ThemeData get lightTheme {
@@ -30,7 +31,7 @@ class AppTheme {
           fontWeight: FontWeight.w800,
         ),
       ),
-      textTheme: GoogleFonts.interTextTheme(
+      textTheme: GoogleFonts.manropeTextTheme(
         base.textTheme,
       ).apply(bodyColor: Colors.black87, displayColor: Colors.black87),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -53,7 +54,7 @@ class AppTheme {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+          borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -86,7 +87,7 @@ class AppTheme {
           fontWeight: FontWeight.w800,
         ),
       ),
-      textTheme: GoogleFonts.interTextTheme(
+      textTheme: GoogleFonts.manropeTextTheme(
         base.textTheme,
       ).apply(bodyColor: Colors.white, displayColor: Colors.white),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -109,7 +110,7 @@ class AppTheme {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

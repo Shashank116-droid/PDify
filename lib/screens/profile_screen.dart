@@ -2,7 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pdify/ad_service.dart';
+import 'package:pdify/services/ad_service.dart';
+import 'package:pdify/main.dart';
 import 'package:pdify/providers/theme_provider.dart';
 import 'package:pdify/widgets/glass_card.dart';
 import 'package:pdify/widgets/primary_button.dart';
@@ -14,7 +15,13 @@ class ProfileScreen extends StatelessWidget {
   Future<void> _signOut(BuildContext context) async {
     try {
       await FirebaseAuth.instance.signOut();
-      // AuthWrapper in main.dart will handle navigation to LoginScreen
+      if (context.mounted) {
+        // Clear the stack and restart from AuthWrapper
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const AuthWrapper()),
+          (route) => false,
+        );
+      }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(
@@ -112,6 +119,27 @@ class ProfileScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  // Logo
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'PDify',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white70,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
                   GlassCard(
                     borderRadius: 24,
                     padding: const EdgeInsets.symmetric(
@@ -127,12 +155,12 @@ class ProfileScreen extends StatelessWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: const Color(
-                              0xFF7C3AED,
-                            ).withValues(alpha: 0.1),
+                              0xFF3B82F6,
+                            ).withOpacity(0.1),
                             border: Border.all(
                               color: const Color(
-                                0xFF7C3AED,
-                              ).withValues(alpha: 0.2),
+                                0xFF3B82F6,
+                              ).withOpacity(0.2),
                               width: 2,
                             ),
                           ),
@@ -144,7 +172,7 @@ class ProfileScreen extends StatelessWidget {
                               style: const TextStyle(
                                 fontSize: 40,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF7C3AED),
+                                color: Color(0xFF3B82F6),
                               ),
                             ),
                           ),
@@ -164,51 +192,7 @@ class ProfileScreen extends StatelessWidget {
                           "Free Plan",
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.textTheme.bodyMedium?.color
-                                ?.withValues(alpha: 0.7),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        // Theme Toggle
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: 0.08,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    themeProvider.isDarkMode
-                                        ? Icons.dark_mode_rounded
-                                        : Icons.light_mode_rounded,
-                                    color: theme.colorScheme.primary,
-                                    size: 22,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    themeProvider.isDarkMode
-                                        ? 'Dark Mode'
-                                        : 'Light Mode',
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Switch(
-                                value: themeProvider.isDarkMode,
-                                onChanged: (_) => themeProvider.toggleTheme(),
-                                activeColor: theme.colorScheme.primary,
-                              ),
-                            ],
+                                ?.withOpacity(0.7),
                           ),
                         ),
                         const SizedBox(height: 32),
@@ -239,12 +223,6 @@ class ProfileScreen extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-          const Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: BannerAdWidget(),
           ),
         ],
       ),
