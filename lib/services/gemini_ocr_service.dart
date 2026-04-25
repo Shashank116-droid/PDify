@@ -8,7 +8,7 @@ class GeminiOcrService {
   late final GenerativeModel _model;
   late final GenerativeModel _notesModel;
 
-  static const String _apiKey = 'AIzaSyDJ0JgkX-SS-v-JOCuyrXu56ezJtk7fGlo';
+  static final String _apiKey = dotenv.get('GEMINI_API_KEY', fallback: '');
 
   // The system instruction helps define the strict persona of an OCR extractor.
   static const String _systemInstruction =

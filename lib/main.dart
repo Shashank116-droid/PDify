@@ -24,10 +24,12 @@ import 'package:pdify/providers/summary_provider.dart';
 import 'package:pdify/providers/highlight_provider.dart';
 import 'package:pdify/screens/ai_chat_screen.dart';
 import 'package:pdify/widgets/app_drawer.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await dotenv.load(fileName: ".env");
   AdService().initialize();
   runApp(const MyApp());
 }
