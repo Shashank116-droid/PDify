@@ -585,19 +585,7 @@ class _HomeScreenState extends State<HomeScreen>
                 onDelete: () => _notesRepo.deleteExamNote(doc.id),
               );
             }),
-            if (notes.length > maxItems)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                child: TextButton(
-                  onPressed: () {
-                    // TODO: Navigate to See All Exam Notes
-                  },
-                  child: Text(
-                    'View all ${notes.length} notes',
-                    style: const TextStyle(color: _accentBlue),
-                  ),
-                ),
-              ),
+            const SizedBox(height: 8),
           ],
         );
       },
@@ -611,20 +599,7 @@ class _HomeScreenState extends State<HomeScreen>
         context,
         MaterialPageRoute(builder: (context) => const ProfileScreen()),
       ),
-      actions: [
-        if (_isDeleting || _isUploading)
-          const Padding(
-            padding: EdgeInsets.only(right: 8),
-            child: SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Color(0xFF3B82F6),
-              ),
-            ),
-          ),
-      ],
+      actions: const [],
     );
   }
 
@@ -1678,9 +1653,18 @@ class _PdfDashboardItemState extends State<PdfDashboardItem> {
                             final chatProvider = context.read<ChatProvider>();
                             final navProvider =
                                 context.read<NavigationProvider>();
+                            final summaryProvider =
+                                context.read<SummaryProvider>();
+                            
+                            // Try to get cached summary for context
+                            final cached = summaryProvider.getCachedSummary(widget.docId);
+                            String? contextText;
+                            if (cached != null && cached['full'] != null) {
+                              contextText = cached['full']['content'];
+                            }
 
                             chatProvider.setActiveContext(
-                                widget.docId, fileName);
+                                widget.docId, fileName, customContext: contextText);
                             navProvider.setIndex(2); // Switch to Chat tab
                           },
                         ),

@@ -10,6 +10,7 @@ import 'package:pdify/repositories/pdf_repository.dart';
 import 'package:pdify/repositories/summary_repository.dart';
 import 'package:pdify/widgets/definition_card.dart';
 import 'package:pdify/widgets/qa_card.dart';
+import 'dart:convert';
 import 'package:provider/provider.dart';
 
 class DocumentInsightsScreen extends StatefulWidget {
@@ -734,8 +735,55 @@ class _DocumentInsightsScreenState extends State<DocumentInsightsScreen>
   }
 
   Widget _buildFormattedText(String text, ThemeData theme) {
+    String displayContent = text;
+
+    // Detect if the AI returned raw JSON instead of text
+    if (text.trim().startsWith('{') && text.trim().endsWith('}')) {
+      try {
+        final data = json.decode(text);
+        
+        // Try to build a readable summary from JSON structure
+        StringBuffer buffer = StringBuffer();
+        
+        if (data is Map) {
+          // If it has 'exam_notes' (like in the user's screenshot)
+          if (data.containsKey('exam_notes')) {
+            final notes = data['exam_notes'] as List;
+            for (var note in notes) {
+              buffer.writeln('# ${note['topic'] ?? ''}');
+              if (note['sub_topics'] != null) {
+                for (var st in note['sub_topics']) {
+                  buffer.writeln('## ${st['title'] ?? ''}');
+                  if (st['definition'] != null) buffer.writeln('*${st['definition']}*\n');
+                  
+                  if (st['core_concepts'] != null) {
+                    for (var cc in st['core_concepts']) {
+                      buffer.writeln('### ${cc['name'] ?? ''}');
+                      buffer.writeln('${cc['description'] ?? ''}\n');
+                    }
+                  }
+                }
+              }
+              buffer.writeln('\n---\n');
+            }
+          } else if (data.containsKey('summary')) {
+             buffer.writeln(data['summary']);
+          } else {
+            // Generic JSON key-value dump if structure is unknown
+            data.forEach((key, value) {
+              buffer.writeln('**$key**: $value\n');
+            });
+          }
+          displayContent = buffer.toString();
+        }
+      } catch (e) {
+        // If parsing fails, just show the raw text
+        displayContent = text;
+      }
+    }
+
     return MarkdownBody(
-      data: text,
+      data: displayContent,
       selectable: true,
       styleSheet: MarkdownStyleSheet(
         p: const TextStyle(fontSize: 14, color: Colors.white70, height: 1.55),
@@ -752,6 +800,11 @@ class _DocumentInsightsScreenState extends State<DocumentInsightsScreen>
           fontSize: 18,
           fontWeight: FontWeight.w700,
           color: Color(0xFF3B82F6),
+        ),
+        h3: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
         ),
         listBullet: const TextStyle(color: Color(0xFF3B82F6)),
       ),

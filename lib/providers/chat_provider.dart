@@ -20,13 +20,16 @@ class ChatProvider extends ChangeNotifier {
 
   String? _activePdfId;
   String? _activeFileName;
+  String? _customContext;
 
   String? get activePdfId => _activePdfId;
   String? get activeFileName => _activeFileName;
+  String? get customContext => _customContext;
 
-  void setActiveContext(String? pdfId, String? fileName) {
+  void setActiveContext(String? pdfId, String? fileName, {String? customContext}) {
     _activePdfId = pdfId;
     _activeFileName = fileName;
+    _customContext = customContext;
     notifyListeners();
   }
 
@@ -65,7 +68,7 @@ class ChatProvider extends ChangeNotifier {
         // For local PDFs, we'd ideally fetch the text from local storage here.
         // For now, if customContext is provided (Notes), use it.
         reply = await gemini.chatWithContext(
-          context: customContext ?? "No context provided.",
+          context: customContext ?? _customContext ?? "No context provided.",
           message: text.trim(),
           history: history,
         );
