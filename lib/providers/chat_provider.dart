@@ -1,5 +1,6 @@
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
+import 'package:pdify/services/gemini_ocr_service.dart';
 
 class ChatMessage {
   final String role; // 'user' or 'model'
@@ -37,48 +38,52 @@ class ChatProvider extends ChangeNotifier {
     return _isLoading[pdfId] ?? false;
   }
 
-  Future<void> sendMessage(String pdfId, String text) async {
+  Future<void> sendMessage(String id, String text, {String? customContext}) async {
     if (text.trim().isEmpty) return;
 
     // Initialize list if needed
-    if (!_messages.containsKey(pdfId)) {
-      _messages[pdfId] = [];
+    if (!_messages.containsKey(id)) {
+      _messages[id] = [];
     }
 
     // Add user message
-    _messages[pdfId]!.add(ChatMessage(role: 'user', text: text.trim()));
-    _isLoading[pdfId] = true;
+    _messages[id]!.add(ChatMessage(role: 'user', text: text.trim()));
+    _isLoading[id] = true;
     notifyListeners();
 
     try {
-      // Get history (excluding the very message we just added)
-      final history = _messages[pdfId]!
-          .take(_messages[pdfId]!.length - 1)
+      final history = _messages[id]!
+          .take(_messages[id]!.length - 1)
           .map((m) => m.toJson())
           .toList();
 
-      final result = await FirebaseFunctions.instance
-          .httpsCallable('chatWithPdf')
-          .call({'pdfId': pdfId, 'message': text.trim(), 'history': history});
+      String reply;
 
-      final reply = result.data['reply'] as String?;
-
-      if (reply != null && reply.isNotEmpty) {
-        _messages[pdfId]!.add(ChatMessage(role: 'model', text: reply));
-      } else {
-        _messages[pdfId]!.add(
-          ChatMessage(
-            role: 'model',
-            text: 'Sorry, I received an empty response.',
-          ),
+      // If it's a local PDF or a Note (customContext provided), use local Gemini service
+      if (id.startsWith('local_') || customContext != null) {
+        final gemini = GeminiOcrService();
+        // For local PDFs, we'd ideally fetch the text from local storage here.
+        // For now, if customContext is provided (Notes), use it.
+        reply = await gemini.chatWithContext(
+          context: customContext ?? "No context provided.",
+          message: text.trim(),
+          history: history,
         );
+      } else {
+        // Use Cloud Function for legacy/cloud PDFs
+        final result = await FirebaseFunctions.instance
+            .httpsCallable('chatWithPdf')
+            .call({'pdfId': id, 'message': text.trim(), 'history': history});
+        reply = result.data['reply'] as String? ?? 'No response from AI.';
       }
+
+      _messages[id]!.add(ChatMessage(role: 'model', text: reply));
     } catch (e) {
-      _messages[pdfId]!.add(
+      _messages[id]!.add(
         ChatMessage(role: 'model', text: 'Error: ${e.toString()}'),
       );
     } finally {
-      _isLoading[pdfId] = false;
+      _isLoading[id] = false;
       notifyListeners();
     }
   }

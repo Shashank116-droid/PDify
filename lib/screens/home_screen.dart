@@ -328,7 +328,13 @@ class _HomeScreenState extends State<HomeScreen>
     if (newName == null || newName.isEmpty || newName == currentName) return;
 
     try {
-      await _pdfRepo.renamePdf(docId, newName);
+      if (docId.startsWith('local_')) {
+        await _pdfRepo.renameLocalPdf(docId, newName);
+        setState(() {}); // Refresh list for local changes
+      } else {
+        await _pdfRepo.renamePdf(docId, newName);
+      }
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('PDF renamed successfully')),
@@ -336,9 +342,9 @@ class _HomeScreenState extends State<HomeScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Rename failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error renaming: $e')),
+        );
       }
     }
   }
@@ -791,27 +797,56 @@ class _HomeScreenState extends State<HomeScreen>
     return StreamBuilder<QuerySnapshot>(
       stream: _pdfRepo.getLatestPdfStream(user!.uid),
       builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const SizedBox.shrink();
-        }
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: _pdfRepo.getLocalPdfs(),
+          builder: (context, localSnapshot) {
+            final cloudDocs = snapshot.data?.docs ?? [];
+            final localDocs = localSnapshot.data ?? [];
 
-        final doc = snapshot.data!.docs.first;
-        final data = doc.data() as Map<String, dynamic>;
+            Map<String, dynamic>? latestDoc;
+            String? latestId;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionHeader('LATEST INSIGHT', 'Current Document', null),
-            PdfDashboardItem(
-              docId: doc.id,
-              data: data,
-              theme: theme,
-              onRename: () => _renamePdf(doc.id, data['fileName'] ?? 'Document'),
-              onDelete: () => _deleteSinglePdf(doc.id, data['storagePath']),
-              onRetry: () => _retryPdf(doc.id, data),
-              openHighlightViewer: (url) => _openHighlightViewer(doc.id, data['fileName'] ?? 'Document', url),
-            ),
-          ],
+            // Find the absolute latest between Cloud and Local
+            DateTime? cloudDate;
+            if (cloudDocs.isNotEmpty) {
+              final data = cloudDocs.first.data() as Map<String, dynamic>;
+              cloudDate = (data['uploadedAt'] as Timestamp?)?.toDate();
+              latestDoc = data;
+              latestId = cloudDocs.first.id;
+            }
+
+            DateTime? localDate;
+            if (localDocs.isNotEmpty) {
+              final data = localDocs.first;
+              localDate = DateTime.tryParse(data['uploadedAt'] ?? '');
+              if (cloudDate == null || (localDate != null && localDate.isAfter(cloudDate))) {
+                latestDoc = data;
+                latestId = data['id'];
+              }
+            }
+
+            if (latestDoc == null) return const SizedBox.shrink();
+
+            final isLocal = latestId?.startsWith('local_') ?? false;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionHeader('LATEST INSIGHT', 'Current Document', null),
+                PdfDashboardItem(
+                  docId: latestId!,
+                  data: latestDoc,
+                  theme: theme,
+                  onRename: () => _renamePdf(latestId!, latestDoc!['fileName'] ?? 'Document'),
+                  onDelete: () => isLocal 
+                      ? _pdfRepo.deleteLocalPdf(latestId!).then((_) => setState(() {})) 
+                      : _deleteSinglePdf(latestId!, latestDoc!['storagePath']),
+                  onRetry: () => isLocal ? null : _retryPdf(latestId!, latestDoc!),
+                  openHighlightViewer: (url) => isLocal ? null : _openHighlightViewer(latestId!, latestDoc!['fileName'] ?? 'Document', url),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -858,18 +893,23 @@ class _HomeScreenState extends State<HomeScreen>
             }
 
             for (var data in localDocs) {
+              data['isLocal'] = true; // Ensure isLocal is set
               allItems.add(data);
             }
 
             // Sort by date
             allItems.sort((a, b) {
-              final dateA = a['uploadedAt'] is String 
-                  ? DateTime.parse(a['uploadedAt']) 
-                  : (a['uploadedAt'] as Timestamp).toDate();
-              final dateB = b['uploadedAt'] is String 
-                  ? DateTime.parse(b['uploadedAt']) 
-                  : (b['uploadedAt'] as Timestamp).toDate();
-              return dateB.compareTo(dateA);
+              try {
+                final dateA = a['uploadedAt'] is String 
+                    ? DateTime.parse(a['uploadedAt']) 
+                    : (a['uploadedAt'] as Timestamp).toDate();
+                final dateB = b['uploadedAt'] is String 
+                    ? DateTime.parse(b['uploadedAt']) 
+                    : (b['uploadedAt'] as Timestamp).toDate();
+                return dateB.compareTo(dateA);
+              } catch (_) {
+                return 0;
+              }
             });
 
             if (allItems.isEmpty) {
@@ -904,7 +944,7 @@ class _HomeScreenState extends State<HomeScreen>
                   docId: docId,
                   data: data,
                   theme: theme,
-                  onRename: () => isLocal ? null : _renamePdf(docId, data['fileName'] ?? 'Document'),
+                  onRename: () => _renamePdf(docId, data['fileName'] ?? 'Document'),
                   onDelete: () => isLocal ? _pdfRepo.deleteLocalPdf(docId).then((_) => setState(() {})) : _deleteSinglePdf(docId, data['storagePath']),
                   onRetry: () => isLocal ? null : _retryPdf(docId, data),
                   openHighlightViewer: (url) => isLocal ? null : _openHighlightViewer(docId, data['fileName'] ?? 'Document', url),
@@ -1390,80 +1430,89 @@ class _RewardedSummaryGateState extends State<_RewardedSummaryGate> {
 
   @override
   Widget build(BuildContext context) {
-    final summaryProvider = context.watch<SummaryProvider>();
-    final isCached = summaryProvider.getCachedSummary(widget.pdfId) != null;
-    if (_isUnlocked || isCached) {
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: PrimaryButton(
-          text: "View Insights",
-          icon: Icons.auto_awesome_rounded,
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    DocumentInsightsScreen(pdfId: widget.pdfId),
-              ),
-            );
-          },
-        ),
-      );
-    }
-    return Column(
-      children: [
-        const Icon(
-          Icons.play_circle_outline_rounded,
-          size: 48,
-          color: Color(0xFF3B82F6),
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'Unlock AI Summary with a short ad',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white70),
-        ),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: _isLoading
-              ? null
-              : () async {
-                  setState(() => _isLoading = true);
-                  final adShown = await AdService().showRewardedAd(
-                    onRewarded: () => setState(() => _isUnlocked = true),
+    return Consumer<SummaryProvider>(
+      builder: (context, summaryProvider, _) {
+        final isUnlocked = summaryProvider.isUnlocked(widget.pdfId);
+
+        if (isUnlocked) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: PrimaryButton(
+              text: "View Insights",
+              icon: Icons.auto_awesome_rounded,
+              onPressed: () async {
+                await AdService().showInterstitialAd();
+                if (context.mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          DocumentInsightsScreen(pdfId: widget.pdfId),
+                    ),
                   );
-                  if (!adShown && mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Ad not ready.')),
-                    );
-                  }
-                  if (mounted) setState(() => _isLoading = false);
-                },
-          icon: _isLoading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Icon(Icons.play_arrow_rounded, color: Colors.white),
-          label: Text(
-            _isLoading ? 'Loading...' : 'Watch Ad & Unlock',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+                }
+              },
             ),
-          ),
-          style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF3B82F6),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+          );
+        }
+        return Column(
+          children: [
+            const Icon(
+              Icons.play_circle_outline_rounded,
+              size: 48,
+              color: Color(0xFF3B82F6),
             ),
-          ),
-        ),
-      ],
+            const SizedBox(height: 16),
+            const Text(
+              'Unlock AI Summary with a short ad',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _isLoading
+                  ? null
+                  : () async {
+                      setState(() => _isLoading = true);
+                      final success = await AdService().showRewardedAd(
+                        onRewarded: () {
+                          summaryProvider.unlock(widget.pdfId);
+                        },
+                      );
+                      if (!success && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Ad not ready.')),
+                        );
+                      }
+                      if (mounted) setState(() => _isLoading = false);
+                    },
+              icon: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.play_arrow_rounded, color: Colors.white),
+              label: Text(
+                _isLoading ? 'Loading...' : 'Watch Ad & Unlock',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF3B82F6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -1635,21 +1684,65 @@ class _PdfDashboardItemState extends State<PdfDashboardItem> {
                             navProvider.setIndex(2); // Switch to Chat tab
                           },
                         ),
-                        _actionIconBtn(Icons.insights_rounded, "Insights", () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  DocumentInsightsScreen(pdfId: widget.docId),
-                            ),
-                          );
+                        _actionIconBtn(Icons.insights_rounded, "Insights", () async {
+                          final summaryProvider = context.read<SummaryProvider>();
+                          final isUnlocked = summaryProvider.isUnlocked(widget.docId);
+                          
+                          if (isUnlocked) {
+                            // Already unlocked, show interstitial then open
+                            await AdService().showInterstitialAd();
+                            if (context.mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      DocumentInsightsScreen(pdfId: widget.docId),
+                                ),
+                              );
+                            }
+                          } else {
+                            // Needs unlock, trigger ad
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Watch a short ad to unlock Insights!')),
+                            );
+                            final adShown = await AdService().showRewardedAd(
+                              onRewarded: () {
+                                summaryProvider.unlock(widget.docId);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        DocumentInsightsScreen(pdfId: widget.docId),
+                                  ),
+                                );
+                              },
+                            );
+                            if (!adShown && mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Ad not ready yet. Please try again in a moment.')),
+                              );
+                            }
+                          }
                         }),
                         _actionIconBtn(
-                          Icons.highlight_rounded,
-                          "Study",
-                          () => widget.openHighlightViewer(
-                              widget.data['fileUrl']),
-                          color: const Color(0xFFF59E0B),
+                          Icons.ios_share_rounded,
+                          "Export",
+                          () async {
+                            final summaryProvider = context.read<SummaryProvider>();
+                            final cached = summaryProvider.getCachedSummary(widget.docId);
+                            
+                            if (cached != null && cached['full'] != null) {
+                              ExportService.exportSummaryToPdf(
+                                context: context,
+                                fileName: fileName,
+                                summaryContent: cached['full']['content'] ?? "",
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Please view Insights once to load data before exporting.')),
+                              );
+                            }
+                          },
                         ),
                         _actionIconBtn(
                           Icons.drive_file_rename_outline_rounded,

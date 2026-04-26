@@ -113,6 +113,7 @@ class ExportService {
     try {
       final pdf = pw.Document();
       final cleanNotes = _cleanMarkdown(notesMarkdown);
+      final cleanTopics = _cleanMarkdown(topics);
 
       pdf.addPage(
         pw.MultiPage(
@@ -124,7 +125,7 @@ class ExportService {
             _buildTitle('Study Notes'),
             pw.SizedBox(height: 8),
             pw.Text(
-              'Topics: ${topics.length > 200 ? '${topics.substring(0, 200)}...' : topics}',
+              'Topics: ${cleanTopics.length > 200 ? '${cleanTopics.substring(0, 200)}...' : cleanTopics}',
               style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600, fontStyle: pw.FontStyle.italic),
             ),
             pw.SizedBox(height: 20),
@@ -140,6 +141,9 @@ class ExportService {
               ...questions.asMap().entries.map((entry) {
                 final i = entry.key;
                 final item = entry.value;
+                final cleanQ = _cleanMarkdown(item['question'] ?? item['q'] ?? "");
+                final cleanA = _cleanMarkdown(item['answer'] ?? item['a'] ?? "");
+                
                 return pw.Container(
                   margin: const pw.EdgeInsets.only(bottom: 14),
                   padding: const pw.EdgeInsets.all(10),
@@ -151,10 +155,10 @@ class ExportService {
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('Q${i + 1}: ${item['question'] ?? item['q'] ?? ""}', 
+                      pw.Text('Q${i + 1}: $cleanQ', 
                         style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
                       pw.SizedBox(height: 6),
-                      pw.Text('A: ${item['answer'] ?? item['a'] ?? ""}', 
+                      pw.Text('A: $cleanA', 
                         style: const pw.TextStyle(fontSize: 10, lineSpacing: 1.5)),
                     ],
                   ),

@@ -169,6 +169,37 @@ $topics''';
   }
 
   /// Generates a full suite of document insights (Standard, Exam, Chapters) locally.
+  /// Chat with a specific context (like a PDF's text or Exam Notes)
+  Future<String> chatWithContext({
+    required String context,
+    required String message,
+    List<Map<String, dynamic>> history = const [],
+  }) async {
+    try {
+      final chat = _model.startChat(
+        history: history.map((m) => Content(
+          m['role'] == 'user' ? 'user' : 'model',
+          [TextPart(m['text'])]
+        )).toList(),
+      );
+
+      final prompt = '''You are a helpful AI study assistant. Answer the user's question based ONLY on the provided context.
+If the answer is not in the context, say you don't know based on this document.
+
+CONTEXT:
+$context
+
+USER MESSAGE:
+$message''';
+
+      final response = await chat.sendMessage(Content.text(prompt));
+      return response.text ?? 'No response from AI.';
+    } catch (e) {
+      debugPrint('GeminiOcrService chatWithContext Error: $e');
+      throw Exception('Chat failed: $e');
+    }
+  }
+
   /// OPTIMIZED: Fires all requests in parallel for maximum speed.
   Future<Map<String, dynamic>> generateFullDocumentInsights(String text) async {
     try {

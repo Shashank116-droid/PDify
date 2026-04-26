@@ -6,7 +6,11 @@ import 'package:pdify/services/export_service.dart';
 import 'package:pdify/providers/bookmark_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:pdify/providers/summary_provider.dart';
 import 'package:pdify/repositories/exam_notes_repository.dart';
+import 'package:pdify/screens/ai_chat_screen.dart';
+import 'package:pdify/providers/chat_provider.dart';
+import 'package:pdify/providers/navigation_provider.dart';
 
 class ExamNoteTile extends StatefulWidget {
   final String noteId;
@@ -36,44 +40,51 @@ class _ExamNoteTileState extends State<ExamNoteTile> {
   static const _emerald = Color(0xFF10B981);
   static const _accentBlue = Color(0xFF3B82F6);
 
-  void _showRewardedAdAndNavigate(BuildContext context) async {
-    // Show a loading snackbar or indicator
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Loading ad to unlock your notes...'),
-        duration: Duration(seconds: 1),
-      ),
-    );
-
+  void _showAdAndNavigate(BuildContext context) async {
+    final summaryProvider = context.read<SummaryProvider>();
     final adService = AdService();
-    
-    // Attempt to show rewarded ad
-    final success = await adService.showRewardedAd(
-      onRewarded: () {
-        // Navigate only after reward is earned
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ExamNotesScreen(
-              topics: widget.topics,
-              notesMarkdown: widget.notesMarkdown,
-              questions: widget.questions,
-            ),
-          ),
-        );
-      },
-    );
+    final isUnlocked = summaryProvider.isUnlocked(widget.noteId);
 
-    if (!success) {
-      if (context.mounted) {
+    if (!isUnlocked) {
+      // FIRST TIME: Show Rewarded Ad
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unlocking notes with a rewarded ad...')),
+      );
+
+      final success = await adService.showRewardedAd(
+        onRewarded: () async {
+          await summaryProvider.unlock(widget.noteId);
+          if (context.mounted) {
+            _navigateToNotes(context);
+          }
+        },
+      );
+
+      if (!success && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ad not ready yet. Please try again in a few seconds.'),
-            backgroundColor: Colors.orange,
-          ),
+          const SnackBar(content: Text('Ad not ready. Please try again.')),
         );
       }
+    } else {
+      // SUBSEQUENT TIMES: Show Interstitial Ad
+      await adService.showInterstitialAd();
+      if (context.mounted) {
+        _navigateToNotes(context);
+      }
     }
+  }
+
+  void _navigateToNotes(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ExamNotesScreen(
+          topics: widget.topics,
+          notesMarkdown: widget.notesMarkdown,
+          questions: widget.questions,
+        ),
+      ),
+    );
   }
 
   @override
@@ -179,7 +190,7 @@ class _ExamNoteTileState extends State<ExamNoteTile> {
                     _actionIconBtn(
                       Icons.menu_book_rounded,
                       "Full Notes",
-                      () => _showRewardedAdAndNavigate(context),
+                      () => _showAdAndNavigate(context),
                       color: _accentBlue,
                     ),
                     _actionIconBtn(
@@ -191,6 +202,25 @@ class _ExamNoteTileState extends State<ExamNoteTile> {
                         notesMarkdown: widget.notesMarkdown,
                         questions: widget.questions,
                       ),
+                    ),
+                     _actionIconBtn(
+                      Icons.chat_bubble_outline_rounded,
+                      "Chat",
+                      () {
+                        final chatProvider = context.read<ChatProvider>();
+                        chatProvider.setActiveContext(widget.noteId, widget.topics);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AiChatScreen(
+                              pdfId: widget.noteId,
+                              fileName: widget.topics,
+                              customContext: widget.notesMarkdown,
+                            ),
+                          ),
+                        );
+                      },
+                      color: const Color(0xFF00D9FF),
                     ),
                     _actionIconBtn(
                       Icons.drive_file_rename_outline_rounded,

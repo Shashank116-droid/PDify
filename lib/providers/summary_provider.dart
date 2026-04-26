@@ -6,9 +6,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// This enables "True Offline Support" and instant opening of summaries.
 class SummaryProvider extends ChangeNotifier {
   static const String _storageKey = 'cached_summaries_v2';
+  static const String _unlockKey = 'unlocked_summaries_v2';
 
   // Structure: Map<pdfId, summaryDataMap>
   Map<String, Map<String, dynamic>> _cache = {};
+  Set<String> _unlockedIds = {};
 
   Map<String, Map<String, dynamic>> get cache => _cache;
 
@@ -24,8 +26,13 @@ class SummaryProvider extends ChangeNotifier {
           (key, value) => MapEntry(key, Map<String, dynamic>.from(value)),
         );
         debugPrint('SummaryProvider: loaded ${_cache.length} cached summaries');
-        notifyListeners();
       }
+
+      final List<String>? unlockedList = prefs.getStringList(_unlockKey);
+      if (unlockedList != null) {
+        _unlockedIds = unlockedList.toSet();
+      }
+      notifyListeners();
     } catch (e) {
       debugPrint('SummaryProvider: Error loading cache: $e');
     }
@@ -33,13 +40,20 @@ class SummaryProvider extends ChangeNotifier {
 
   /// Retrieves a summary from the local cache. Returns null if not found.
   Map<String, dynamic>? getCachedSummary(String pdfId) {
-    final data = _cache[pdfId];
-    if (data != null) {
-      debugPrint('SummaryProvider: Cache HIT for $pdfId');
-    } else {
-      debugPrint('SummaryProvider: Cache MISS for $pdfId');
+    return _cache[pdfId];
+  }
+
+  bool isUnlocked(String pdfId) {
+    return _unlockedIds.contains(pdfId);
+  }
+
+  Future<void> unlock(String pdfId) async {
+    if (!_unlockedIds.contains(pdfId)) {
+      _unlockedIds.add(pdfId);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_unlockKey, _unlockedIds.toList());
+      notifyListeners();
     }
-    return data;
   }
 
   /// Updates the local cache with new summary data and persists it.

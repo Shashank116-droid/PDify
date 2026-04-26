@@ -120,4 +120,19 @@ class PdfRepository {
     await prefs.setString('local_pdf_list', json.encode(localList));
     await prefs.remove('summary_cache_$localId');
   }
+
+  Future<void> renameLocalPdf(String localId, String newName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final localListStr = prefs.getString('local_pdf_list') ?? '[]';
+    final List<dynamic> localList = jsonDecode(localListStr);
+    
+    for (var item in localList) {
+      if (item['id'] == localId) {
+        item['fileName'] = newName;
+        break;
+      }
+    }
+    
+    await prefs.setString('local_pdf_list', json.encode(localList));
+  }
 }

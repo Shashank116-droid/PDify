@@ -14,8 +14,9 @@ import 'package:pdify/widgets/primary_button.dart';
 class AiChatScreen extends StatefulWidget {
   final String? pdfId;
   final String? fileName;
+  final String? customContext;
 
-  const AiChatScreen({super.key, this.pdfId, this.fileName});
+  const AiChatScreen({super.key, this.pdfId, this.fileName, this.customContext});
 
   @override
   State<AiChatScreen> createState() => _AiChatScreenState();
@@ -37,13 +38,13 @@ class _AiChatScreenState extends State<AiChatScreen> {
     super.dispose();
   }
 
-  void _sendMessage(String? pdfId) {
-    if (pdfId == null) return;
+  void _sendMessage(String? id) {
+    if (id == null) return;
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
     _controller.clear();
-    context.read<ChatProvider>().sendMessage(pdfId, text);
+    context.read<ChatProvider>().sendMessage(id, text, customContext: widget.customContext);
     _scrollToBottom();
   }
 
