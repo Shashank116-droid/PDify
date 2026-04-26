@@ -149,14 +149,15 @@ class _DocumentInsightsScreenState extends State<DocumentInsightsScreen>
                         legacyData = data;
                     }
 
-                    return FutureBuilder<DocumentSnapshot>(
-                      future: _pdfRepo.getPdfFuture(widget.pdfId),
+                    return FutureBuilder<Map<String, dynamic>>(
+                      future: widget.pdfId.startsWith('local_') 
+                          ? _pdfRepo.getLocalPdfs().then((list) => list.firstWhere((e) => e['id'] == widget.pdfId, orElse: () => {}))
+                          : _pdfRepo.getPdfFuture(widget.pdfId).then((doc) => doc.data() as Map<String, dynamic>? ?? {}),
                       builder: (context, pdfSnapshot) {
-                        final pdfData =
-                            pdfSnapshot.data?.data() as Map<String, dynamic>? ??
-                            {};
+                        final pdfData = pdfSnapshot.data ?? {};
                         final fileName =
                             (pdfData['fileName'] ??
+                                     pdfData['fileName'] ?? // Local metadata has fileName
                                     fullData?['fileName'] ??
                                     legacyData?['fileName'] ??
                                     "Document")

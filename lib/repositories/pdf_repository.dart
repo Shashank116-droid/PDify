@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PdfRepository {
   final FirebaseFirestore _firestore;
@@ -85,5 +87,37 @@ class PdfRepository {
 
   Future<DocumentSnapshot> getPdfFuture(String docId) {
     return _firestore.collection('pdfs').doc(docId).get();
+  }
+
+  // --- LOCAL PDF METADATA STORAGE ---
+
+  Future<void> saveLocalPdfMetadata(String localId, Map<String, dynamic> metadata) async {
+    final prefs = await SharedPreferences.getInstance();
+    final localListStr = prefs.getString('local_pdf_list') ?? '[]';
+    final List<dynamic> localList = jsonDecode(localListStr);
+    
+    metadata['id'] = localId;
+    metadata['isLocal'] = true;
+    metadata['uploadedAt'] = DateTime.now().toIso8601String();
+    
+    localList.insert(0, metadata);
+    await prefs.setString('local_pdf_list', json.encode(localList));
+  }
+
+  Future<List<Map<String, dynamic>>> getLocalPdfs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final localListStr = prefs.getString('local_pdf_list') ?? '[]';
+    final List<dynamic> localList = jsonDecode(localListStr);
+    return localList.map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
+  Future<void> deleteLocalPdf(String localId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final localListStr = prefs.getString('local_pdf_list') ?? '[]';
+    final List<dynamic> localList = jsonDecode(localListStr);
+    
+    localList.removeWhere((item) => item['id'] == localId);
+    await prefs.setString('local_pdf_list', json.encode(localList));
+    await prefs.remove('summary_cache_$localId');
   }
 }

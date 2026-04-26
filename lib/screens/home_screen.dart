@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -10,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:pdify/providers/chat_provider.dart';
 import 'package:pdify/providers/navigation_provider.dart';
-import 'package:pdify/widgets/app_drawer.dart';
 import 'package:provider/provider.dart';
 import 'package:pdify/services/ad_service.dart';
 import 'package:pdify/providers/search_filter_provider.dart';
@@ -21,7 +18,6 @@ import 'package:pdify/providers/summary_provider.dart';
 import 'package:pdify/screens/document_insights_screen.dart';
 import 'package:pdify/widgets/premium_header.dart';
 import 'package:pdify/screens/profile_screen.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:pdify/widgets/glass_card.dart';
 import 'package:pdify/widgets/primary_button.dart';
 import 'package:pdify/widgets/mesh_background_scaffold.dart';
@@ -37,6 +33,7 @@ import 'package:pdify/repositories/exam_notes_repository.dart';
 import 'package:pdify/widgets/exam_note_tile.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:pdify/services/gemini_ocr_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isDocumentsOnly;
@@ -58,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen>
   final PdfRepository _pdfRepo = PdfRepository();
   final SummaryRepository _summaryRepo = SummaryRepository();
   final ExamNotesRepository _notesRepo = ExamNotesRepository();
+  final GeminiOcrService _geminiService = GeminiOcrService();
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -67,9 +65,9 @@ class _HomeScreenState extends State<HomeScreen>
   static const _cardBg = Color(0xFF131B2E);
   static const _accentBlue = Color(0xFF3B82F6);
   static const _accentCyan = Color(0xFF00D9FF);
-  static const _emerald = Color(0xFF10B981);
-  static const _amber = Color(0xFFFBBF24);
-  static const _slate = Color(0xFF64748B);
+  // static const _emerald = Color(0xFF10B981);
+  // static const _amber = Color(0xFFFBBF24);
+  // static const _slate = Color(0xFF94A3B8);
 
   @override
   void initState() {
@@ -106,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  Future<void> _pickAndUploadPdf() async {
+  Future<void> _pickAndProcessPdfLocally() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
@@ -115,76 +113,76 @@ class _HomeScreenState extends State<HomeScreen>
     if (result != null && result.files.single.path != null) {
       String filePath = result.files.single.path!;
       String fileName = result.files.single.name;
-      File file = File(filePath);
-
-      int sizeInBytes = await file.length();
-      if (sizeInBytes > 10 * 1024 * 1024) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("File size must be less than 10MB")),
-          );
-        }
-        return;
-      }
+      // File file = File(filePath); // Unused
 
       setState(() {
         _isUploading = true;
-        _statusMessage = "Uploading PDF...";
+        _statusMessage = "Reading PDF...";
       });
 
-      StreamSubscription? summarySubscription;
-
       try {
+        // 1. Render all pages to images for OCR
         final pdfDoc = await PdfDocument.openFile(filePath);
         final pageCount = pdfDoc.pagesCount;
+        final tempDir = await getTemporaryDirectory();
+        final List<String> imagePaths = [];
+
+        for (int i = 1; i <= pageCount; i++) {
+          setState(() => _statusMessage = "Reading page $i of $pageCount...");
+          final page = await pdfDoc.getPage(i);
+          final pageImage = await page.render(
+            width: page.width * 1.5,
+            height: page.height * 1.5,
+            format: PdfPageImageFormat.jpeg,
+            quality: 70,
+          );
+          final imageFile = File('${tempDir.path}/page_$i.jpg');
+          await imageFile.writeAsBytes(pageImage!.bytes);
+          imagePaths.add(imageFile.path);
+          await page.close();
+        }
         await pdfDoc.close();
 
-        final docRef = await _pdfRepo.uploadPdf(
-          file: file,
-          userId: user!.uid,
-          fileName: fileName,
-          pageCount: pageCount,
-        );
+        // 2. Perform Batch OCR
+        setState(() => _statusMessage = "Extracting text...");
+        final imageFiles = imagePaths.map((path) => File(path)).toList();
+        final extractedTextList = await _geminiService.extractTextFromImagesBatch(imageFiles);
+        final combinedText = extractedTextList.join('\n\n');
 
-        final pdfId = docRef.id;
+        // 3. Generate Insights in Parallel
+        setState(() => _statusMessage = "Generating AI insights...");
+        final insights = await _geminiService.generateFullDocumentInsights(combinedText);
+
+        // 4. Save Locally
+        final localId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+        await _summaryRepo.saveLocalSummary(localId, insights);
+        await _pdfRepo.saveLocalPdfMetadata(localId, {
+          'fileName': fileName,
+          'pageCount': pageCount,
+          'status': 'completed',
+        });
 
         if (mounted) {
           setState(() {
             _isUploading = false;
-            _isGenerating = true;
-            _statusMessage = "Generating Summary...";
+            _statusMessage = "";
           });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Analysis complete! Saved locally.")),
+          );
+          // Refresh list
+          setState(() {});
         }
-
-        // Listen for the summary to be generated
-        summarySubscription = _summaryRepo
-            .getSummariesStreamByPdfId(pdfId)
-            .listen((snapshot) {
-              if (snapshot.docs.isNotEmpty && mounted) {
-                setState(() {
-                  _isGenerating = false;
-                  _statusMessage = "";
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Summary generated successfully!"),
-                  ),
-                );
-                summarySubscription?.cancel();
-              }
-            });
       } catch (e) {
         if (mounted) {
           setState(() {
             _isUploading = false;
-            _isGenerating = false;
             _statusMessage = "";
           });
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text("Upload failed: $e")));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Local analysis failed: $e")),
+          );
         }
-        summarySubscription?.cancel();
       }
     }
   }
@@ -433,7 +431,7 @@ class _HomeScreenState extends State<HomeScreen>
                       isUploading: _isUploading,
                       isGenerating: _isGenerating,
                       statusMessage: _statusMessage,
-                      onUploadPressed: _pickAndUploadPdf,
+                      onUploadPressed: _pickAndProcessPdfLocally,
                     ),
                   ),
                   const SliverToBoxAdapter(child: SizedBox(height: 12)),
@@ -842,55 +840,78 @@ class _HomeScreenState extends State<HomeScreen>
           );
         }
 
-        final allDocs = snapshot.data!.docs;
-        final folderProvider = context.watch<FolderProvider>();
-        final bookmarkProvider = context.watch<BookmarkProvider>();
+        // Combine Firestore and Local docs
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: _pdfRepo.getLocalPdfs(),
+          builder: (context, localSnapshot) {
+            final cloudDocs = snapshot.data!.docs;
+            final localDocs = localSnapshot.data ?? [];
 
-        // Filter and Sort using the provider's logic
-        final docs = searchProvider.filterAndSort(
-          allDocs,
-          bookmarkProvider.bookmarkedIds,
-          folderAssignments: folderProvider.assignments,
-        );
-
-        if (docs.isEmpty) {
-          return SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 60),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.description_outlined,
-                    size: 64,
-                    color: theme.hintColor.withOpacity(0.2),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No documents found',
-                    style: TextStyle(color: theme.hintColor.withOpacity(0.5)),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        return SliverList(
-          delegate: SliverChildBuilderDelegate((context, index) {
-            final doc = docs[index];
-            final data = doc.data() as Map<String, dynamic>;
-            final docId = doc.id;
+            // Convert cloud docs to a uniform format
+            List<Map<String, dynamic>> allItems = [];
             
-            return PdfDashboardItem(
-              docId: docId,
-              data: data,
-              theme: theme,
-              onRename: () => _renamePdf(docId, data['fileName'] ?? 'Document'),
-              onDelete: () => _deleteSinglePdf(docId, data['storagePath']),
-              onRetry: () => _retryPdf(docId, data),
-              openHighlightViewer: (url) => _openHighlightViewer(docId, data['fileName'] ?? 'Document', url),
+            for (var doc in cloudDocs) {
+              final data = doc.data() as Map<String, dynamic>;
+              data['id'] = doc.id;
+              data['isLocal'] = false;
+              allItems.add(data);
+            }
+
+            for (var data in localDocs) {
+              allItems.add(data);
+            }
+
+            // Sort by date
+            allItems.sort((a, b) {
+              final dateA = a['uploadedAt'] is String 
+                  ? DateTime.parse(a['uploadedAt']) 
+                  : (a['uploadedAt'] as Timestamp).toDate();
+              final dateB = b['uploadedAt'] is String 
+                  ? DateTime.parse(b['uploadedAt']) 
+                  : (b['uploadedAt'] as Timestamp).toDate();
+              return dateB.compareTo(dateA);
+            });
+
+            if (allItems.isEmpty) {
+              return SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 60),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.description_outlined,
+                        size: 64,
+                        color: theme.hintColor.withOpacity(0.2),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No documents found',
+                        style: TextStyle(color: theme.hintColor.withOpacity(0.5)),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return SliverList(
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final data = allItems[index];
+                final docId = data['id'];
+                final isLocal = data['isLocal'] ?? false;
+                
+                return PdfDashboardItem(
+                  docId: docId,
+                  data: data,
+                  theme: theme,
+                  onRename: () => isLocal ? null : _renamePdf(docId, data['fileName'] ?? 'Document'),
+                  onDelete: () => isLocal ? _pdfRepo.deleteLocalPdf(docId).then((_) => setState(() {})) : _deleteSinglePdf(docId, data['storagePath']),
+                  onRetry: () => isLocal ? null : _retryPdf(docId, data),
+                  openHighlightViewer: (url) => isLocal ? null : _openHighlightViewer(docId, data['fileName'] ?? 'Document', url),
+                );
+              }, childCount: allItems.length),
             );
-          }, childCount: docs.length),
+          },
         );
       },
     );
@@ -949,7 +970,7 @@ class _HomeScreenState extends State<HomeScreen>
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: _pickAndUploadPdf,
+          onTap: _pickAndProcessPdfLocally,
           customBorder: const CircleBorder(),
           child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
         ),

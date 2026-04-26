@@ -308,9 +308,12 @@ exports.processPdf = onDocumentCreated("pdfs/{pdfId}", async (event) => {
             type: "full" // Mark as full summary
         });
 
-        // --- Exam-Oriented Summary (Additive Feature) ---
-        try {
-            // Dynamically determine number of practice questions based on content length
+        // --- OPTIMIZED: Run Exam + Chapter generation in parallel ---
+        // Both are independent of each other, so we use Promise.allSettled
+        // to run them concurrently. Each handles its own errors internally.
+
+        const examTask = (async () => {
+            // --- Exam-Oriented Summary ---
             const contentLength = text.trim().length;
             let questionCount;
             if (contentLength < 5000) {
@@ -332,18 +335,7 @@ Do NOT include practice questions in this summary.
 Content:
 ${text.substring(0, 25000)}`;
 
-            const { response: examResponse } = await generateContent(usedModelName, examPrompt);
-
-            let examSummaryText = null;
-            if (examResponse.ok) {
-                const examJson = await examResponse.json();
-                examSummaryText = examJson.candidates?.[0]?.content?.parts?.[0]?.text;
-            }
-
-            // Generate Q&A pairs as structured JSON
-            let questions = [];
-            try {
-                const qaPrompt = `Based on the following content, generate exactly ${questionCount} practice questions with detailed answers for exam preparation.
+            const qaPrompt = `Based on the following content, generate exactly ${questionCount} practice questions with detailed answers for exam preparation.
 
 Return ONLY a valid JSON array with no other text, in this exact format:
 [{"question": "What is X?", "answer": "X is..."}, {"question": "Explain Y", "answer": "Y works by..."}]
@@ -351,93 +343,120 @@ Return ONLY a valid JSON array with no other text, in this exact format:
 Content:
 ${text.substring(0, 25000)}`;
 
-                const { response: qaResponse } = await generateContent(usedModelName, qaPrompt);
-                if (qaResponse.ok) {
-                    const qaJson = await qaResponse.json();
+            // OPTIMIZATION: Fire exam summary + Q&A requests in parallel
+            const [examResult, qaResult] = await Promise.allSettled([
+                generateContent(usedModelName, examPrompt),
+                generateContent(usedModelName, qaPrompt),
+            ]);
+
+            let examSummaryText = null;
+            if (examResult.status === 'fulfilled' && examResult.value.response.ok) {
+                const examJson = await examResult.value.response.json();
+                examSummaryText = examJson.candidates?.[0]?.content?.parts?.[0]?.text;
+            }
+
+            let questions = [];
+            if (qaResult.status === 'fulfilled' && qaResult.value.response.ok) {
+                try {
+                    const qaJson = await qaResult.value.response.json();
                     const qaText = qaJson.candidates?.[0]?.content?.parts?.[0]?.text;
                     if (qaText) {
-                        // Extract JSON from response (handle markdown code blocks)
                         const jsonMatch = qaText.match(/\[[\s\S]*\]/);
                         if (jsonMatch) {
                             questions = JSON.parse(jsonMatch[0]);
                         }
                     }
+                } catch (qaError) {
+                    console.warn("Q&A parsing failed (non-critical):", qaError.message);
                 }
-            } catch (qaError) {
-                console.warn("Q&A generation failed (non-critical):", qaError.message);
             }
 
             if (examSummaryText) {
                 await admin.firestore().collection("summaries").add({
                     pdfId: pdfId,
                     content: examSummaryText,
-                    questions: questions, // Structured Q&A array
+                    questions: questions,
                     createdAt: admin.firestore.FieldValue.serverTimestamp(),
                     model: usedModelName,
                     type: "exam"
                 });
                 console.log(`Exam summary generated with ${questions.length} Q&A pairs.`);
             }
-        } catch (examError) {
-            // Exam summary failure should NOT fail the main process
-            console.warn("Exam summary generation failed (non-critical):", examError.message);
-        }
-        // --- End Exam-Oriented Summary ---
+        })();
 
-        // --- Chapter-wise Summaries (Additive Feature) ---
-        try {
+        const chapterTask = (async () => {
+            // --- Chapter-wise Summaries ---
             const chapters = detectChapters(text);
 
-            if (chapters.length >= 2) {
-                console.log(`Detected ${chapters.length} chapters.Generating chapter summaries...`);
+            if (chapters.length < 2) {
+                console.log("No chapter structure detected, skipping chapter summaries.");
+                return;
+            }
 
-                // Helper to generate chapter summary
-                const generateChapterSummary = async (chapter, chapterIndex) => {
-                    const chapterPrompt = `Summarize this chapter / section concisely for a student.Focus on key concepts and takeaways.\n\nTitle: ${chapter.title} \n\nContent: \n${chapter.content} `;
+            console.log(`Detected ${chapters.length} chapters. Generating chapter summaries...`);
 
-                    const { response: chapterResponse } = await generateContent(usedModelName, chapterPrompt);
+            const generateChapterSummary = async (chapter, chapterIndex) => {
+                const chapterPrompt = `Summarize this chapter / section concisely for a student. Focus on key concepts and takeaways.\n\nTitle: ${chapter.title}\n\nContent:\n${chapter.content}`;
 
-                    if (!chapterResponse.ok) {
-                        console.warn(`Chapter ${chapterIndex + 1} summary failed: ${chapterResponse.status} `);
-                        return null;
-                    }
+                const { response: chapterResponse } = await generateContent(usedModelName, chapterPrompt);
 
-                    const chapterJson = await chapterResponse.json();
-                    return chapterJson.candidates?.[0]?.content?.parts?.[0]?.text || null;
-                };
+                if (!chapterResponse.ok) {
+                    console.warn(`Chapter ${chapterIndex + 1} summary failed: ${chapterResponse.status}`);
+                    return null;
+                }
 
-                // Process chapters sequentially to avoid rate limits
-                const chapterSummaries = [];
-                for (let i = 0; i < Math.min(chapters.length, 10); i++) { // Max 10 chapters
-                    const chapterSummary = await generateChapterSummary(chapters[i], i);
-                    if (chapterSummary) {
+                const chapterJson = await chapterResponse.json();
+                return chapterJson.candidates?.[0]?.content?.parts?.[0]?.text || null;
+            };
+
+            // OPTIMIZATION: Process chapters in parallel (batches of 3 to respect rate limits)
+            const chaptersToProcess = chapters.slice(0, 10); // Max 10 chapters
+            const chapterSummaries = [];
+            const CHAPTER_BATCH_SIZE = 3;
+
+            for (let i = 0; i < chaptersToProcess.length; i += CHAPTER_BATCH_SIZE) {
+                const batch = chaptersToProcess.slice(i, i + CHAPTER_BATCH_SIZE);
+                const batchResults = await Promise.allSettled(
+                    batch.map((chapter, batchIdx) =>
+                        generateChapterSummary(chapter, i + batchIdx)
+                    )
+                );
+
+                batchResults.forEach((result, batchIdx) => {
+                    const globalIdx = i + batchIdx;
+                    if (result.status === 'fulfilled' && result.value) {
                         chapterSummaries.push({
-                            title: chapters[i].title,
-                            summary: chapterSummary,
-                            order: i
+                            title: chaptersToProcess[globalIdx].title,
+                            summary: result.value,
+                            order: globalIdx
                         });
                     }
-                }
-
-                // Store chapter summaries if we have any
-                if (chapterSummaries.length > 0) {
-                    await admin.firestore().collection("summaries").add({
-                        pdfId: pdfId,
-                        chapters: chapterSummaries,
-                        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                        model: usedModelName,
-                        type: "chapters" // Mark as chapter summary
-                    });
-                    console.log(`Stored ${chapterSummaries.length} chapter summaries.`);
-                }
-            } else {
-                console.log("No chapter structure detected, skipping chapter summaries.");
+                });
             }
-        } catch (chapterError) {
-            // Chapter summary failure should NOT fail the main process
-            console.warn("Chapter summary generation failed (non-critical):", chapterError.message);
+
+            if (chapterSummaries.length > 0) {
+                // Sort by order to maintain correct sequence
+                chapterSummaries.sort((a, b) => a.order - b.order);
+                await admin.firestore().collection("summaries").add({
+                    pdfId: pdfId,
+                    chapters: chapterSummaries,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    model: usedModelName,
+                    type: "chapters"
+                });
+                console.log(`Stored ${chapterSummaries.length} chapter summaries.`);
+            }
+        })();
+
+        // Wait for both tasks to complete. Failures are isolated.
+        const [examOutcome, chapterOutcome] = await Promise.allSettled([examTask, chapterTask]);
+        if (examOutcome.status === 'rejected') {
+            console.warn("Exam summary generation failed (non-critical):", examOutcome.reason?.message || examOutcome.reason);
         }
-        // --- End Chapter-wise Summaries ---
+        if (chapterOutcome.status === 'rejected') {
+            console.warn("Chapter summary generation failed (non-critical):", chapterOutcome.reason?.message || chapterOutcome.reason);
+        }
+        // --- End Parallel Exam + Chapter Generation ---
 
         await snap.ref.update({ status: "completed" });
     } catch (error) {

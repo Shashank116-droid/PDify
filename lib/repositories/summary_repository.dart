@@ -72,4 +72,18 @@ class SummaryRepository {
     await prefs.setString(cacheKey, json.encode(results));
     return results;
   }
+
+  /// Saves a locally generated summary (no Firestore involved).
+  Future<void> saveLocalSummary(String localPdfId, Map<String, dynamic> summaryData) async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Split the aggregated data into the structure the UI expects
+    final results = [
+      {...summaryData['full'] as Map<String, dynamic>, 'pdfId': localPdfId, 'type': 'full'},
+      {...summaryData['exam'] as Map<String, dynamic>, 'pdfId': localPdfId, 'type': 'exam'},
+      {...summaryData['chapters'] as Map<String, dynamic>, 'pdfId': localPdfId, 'type': 'chapters'},
+    ];
+
+    await prefs.setString('summary_cache_$localPdfId', json.encode(results));
+  }
 }

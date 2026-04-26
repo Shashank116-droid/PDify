@@ -292,18 +292,19 @@ class _ExamNotesCardState extends State<ExamNotesCard> {
         _statusMessage = 'Reading PDF pages...';
       });
 
-      // Render PDF pages and OCR each one
+      // Render all PDF pages first, then OCR in parallel batches
       final document = await pdfx.PdfDocument.openFile(pdfPath);
       final pageCount = document.pagesCount;
       final maxPages = pageCount > 10 ? 10 : pageCount; // Limit to 10 pages
 
-      final StringBuffer allText = StringBuffer();
       final tempDir = await getTemporaryDirectory();
+      final List<File> pageImageFiles = [];
 
+      // Phase 1: Render all pages to images (sequential — required by pdfx)
       for (int i = 1; i <= maxPages; i++) {
         if (mounted) {
           setState(() {
-            _statusMessage = 'Reading page $i of $maxPages...';
+            _statusMessage = 'Rendering page $i of $maxPages...';
           });
         }
 
@@ -315,29 +316,58 @@ class _ExamNotesCardState extends State<ExamNotesCard> {
         );
 
         if (pageImage != null) {
-          // Save rendered page as temp image
           final imageFile = File('${tempDir.path}/syllabus_page_$i.png');
           await imageFile.writeAsBytes(pageImage.bytes);
-
-          // OCR the page image
-          try {
-            final pageText = await _ocrService.extractTextFromImage(imageFile);
-            if (pageText.isNotEmpty) {
-              allText.writeln(pageText);
-              allText.writeln();
-            }
-          } catch (e) {
-            debugPrint('Failed to OCR page $i: $e');
-          }
-
-          // Clean up temp file
-          try { await imageFile.delete(); } catch (_) {}
+          pageImageFiles.add(imageFile);
         }
 
         await page.close();
       }
 
       await document.close();
+
+      if (pageImageFiles.isEmpty) {
+        if (mounted) {
+          setState(() { _isGenerating = false; _statusMessage = ''; });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not render PDF pages. Try a different file.')),
+          );
+        }
+        return;
+      }
+
+      // Phase 2: OCR all pages in parallel batches (3 at a time)
+      if (mounted) {
+        setState(() {
+          _statusMessage = 'Extracting text from ${pageImageFiles.length} pages...';
+        });
+      }
+
+      final pageTexts = await _ocrService.extractTextFromImagesBatch(
+        pageImageFiles,
+        batchSize: 3,
+        onProgress: (completed, total) {
+          if (mounted) {
+            setState(() {
+              _statusMessage = 'Reading page $completed of $total...';
+            });
+          }
+        },
+      );
+
+      // Build combined text
+      final StringBuffer allText = StringBuffer();
+      for (final text in pageTexts) {
+        if (text.isNotEmpty) {
+          allText.writeln(text);
+          allText.writeln();
+        }
+      }
+
+      // Clean up temp files
+      for (final file in pageImageFiles) {
+        try { await file.delete(); } catch (_) {}
+      }
 
       final extractedText = allText.toString().trim();
 
